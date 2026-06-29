@@ -254,9 +254,8 @@
         margin-bottom: var(--space-xl);
       }
       .logo-badge img {
-        height: 130px;
+        height: 170px;
         border-radius: var(--radius-lg);
-        mix-blend-mode: screen;
       }
 
       /* ── Hero decorative tagline pill ── */
@@ -392,9 +391,13 @@
         .hero-sticker { display: none; }
         .hero-blob-1, .hero-blob-2, .hero-blob-3 { display: none; }
         .logo-badge img {
-          height: 100px;
-          mix-blend-mode: screen;
-        }
+            height: 130px;
+            mix-blend-mode: screen;
+          }
+          .logo-badge video {
+            height: 130px;
+            border-radius: var(--radius-lg);
+          }
       }
 
       /* ── Section label tag ── */
@@ -793,7 +796,7 @@
           <div class="hero-text-col">
             <div class="section-animate">
               <div class="logo-badge">
-                <img src="assets/brand-logo.jpg" alt="你造吗 Logo">
+                <video src="assets/logo-video.mp4" autoplay loop muted playsinline alt="你造吗 Logo" style="height:170px;border-radius:var(--radius-lg);"></video>
               </div>
             </div>
 
