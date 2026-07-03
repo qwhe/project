@@ -416,10 +416,10 @@ const STYLE_PACKS = {
   handdrawn:{name:'手绘风',primary:'#36D6A0',secondary:'#FFB800',bg:'#F7FFFB',accent:'#FF6B00',line:'sketch',decor:'doodle'}
 };
 const PRESETS = {
-  pet:{nickname:'毛球',type:'pet',traits:['圆脸','大眼睛','暖色调'],style:'cute',emoji:'🐱',color:'#ffb76b'},
-  person:{nickname:'小光',type:'person',traits:['短发','微笑','冷色调'],style:'cool',emoji:'👤',color:'#78a9ff'},
-  item:{nickname:'小杯',type:'item',traits:['圆润','哑光','中性色'],style:'handdrawn',emoji:'☕',color:'#caa47a'},
-  brand:{nickname:'饱饱',type:'brand',traits:['方正','鲜艳','高饱和'],style:'retro',emoji:'🏪',color:'#e35d3d'}
+  pet:{nickname:'毛球',type:'pet',traits:['圆脸','大眼睛','暖色调'],style:'cute',emoji:'🐱',color:'#ffb76b',samplePhoto:'https://aka.doubaocdn.com/s/Okxe1whgXN'},
+  person:{nickname:'小光',type:'person',traits:['短发','微笑','冷色调'],style:'cool',emoji:'👤',color:'#78a9ff',samplePhoto:'https://aka.doubaocdn.com/s/GqSA1whgXN'},
+  item:{nickname:'小杯',type:'item',traits:['圆润','哑光','中性色'],style:'handdrawn',emoji:'☕',color:'#caa47a',samplePhoto:'https://aka.doubaocdn.com/s/813D1whgXN'},
+  brand:{nickname:'饱饱',type:'brand',traits:['方正','鲜艳','高饱和'],style:'retro',emoji:'🏪',color:'#e35d3d',samplePhoto:'https://aka.doubaocdn.com/s/a3WN1whgXN'}
 };
 const CURATED_ASSETS = {
   hero:'https://aka.doubaocdn.com/s/Okxe1whgXN',
@@ -449,7 +449,7 @@ function readPhoto(file){
   reader.onload = ev => handlePhotoReady({photo:ev.target.result,type:'person',nickname:'新朋友',traits:['自然光','真实照片','待提炼'],style:'cute'});
   reader.readAsDataURL(file);
 }
-function usePreset(key){const p=PRESETS[key];handlePhotoReady({photo:null,photoPreset:key,type:p.type,nickname:p.nickname,traits:[...p.traits],style:p.style,avgColor:p.color})}
+function usePreset(key){const p=PRESETS[key];handlePhotoReady({photo:p.samplePhoto,photoPreset:key,type:p.type,nickname:p.nickname,traits:[...p.traits],style:p.style,avgColor:p.color})}
 function handlePhotoReady(data){
   Object.assign(userData,data);
   userData.pose=0; userData.zoom=1;
@@ -459,8 +459,16 @@ function handlePhotoReady(data){
 }
 function renderPhotoBox(sel,size=80){
   const el=$(sel); if(!el) return; el.innerHTML='';
-  if(userData.photo){const img=new Image(); img.src=userData.photo; el.appendChild(img)}
-  else {const div=document.createElement('div'); div.className='emoji-photo'; div.textContent=PRESETS[userData.photoPreset]?.emoji || '📸'; div.style.fontSize=size>100?'7rem':'1.8rem'; el.appendChild(div)}
+  if(userData.photo){
+    const img=document.createElement('img');
+    img.src=userData.photo;
+    img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:24px';
+    el.appendChild(img);
+  } else {
+    const div=document.createElement('div'); div.className='emoji-photo';
+    div.textContent='📸'; div.style.fontSize=size>100?'7rem':'1.8rem';
+    el.appendChild(div);
+  }
 }
 function startAnalyze(){
   goToStage('stage-analyze');
@@ -511,7 +519,19 @@ function selectStyle(style){
   $('#hero-canvas')?.classList.add('redraw');
   setTimeout(()=>{drawHero();$('#hero-canvas')?.classList.remove('redraw')},90);
 }
-function changePose(dir){ userData.pose=(userData.pose+dir+3)%3; drawHero(); updatePoseDots() }
+function changePose(dir){
+  userData.pose=(userData.pose+dir+3)%3; updatePoseDots();
+  if(userData.photoPreset){
+    const img=$('#curated-preview');
+    if(img){
+      const transforms=['scale(1) rotate(0deg)','scale(1.04) rotate(-2deg) translateX(8px)','scale(.97) rotate(2deg) translateX(-6px)'];
+      img.style.transition='transform .35s var(--smooth)';
+      img.style.transform=transforms[userData.pose];
+    }
+  } else {
+    if(userData.photo){ drawPhotoArt() } else { drawHero() }
+  }
+}
 function updatePoseDots(){ $('#pose-dots').innerHTML=[0,1,2].map(i=>`<span class="dot ${i===userData.pose?'active':''}"></span>`).join('') }
 function setZoom(next){
   userData.zoom=Math.max(.55,Math.min(1.8,next));
@@ -534,9 +554,10 @@ function renderConfirm(){
   $('#confirm-traits').textContent=ensureTraits().join(' · ');
   $$('.style-btn').forEach(b=>b.classList.toggle('active',b.dataset.style===userData.style));
   const preview = $('#studio-preview');
-  if (preview) preview.classList.toggle('use-curated', !!userData.photoPreset);
+  const isPreset = !!userData.photoPreset;
+  if (preview) preview.classList.toggle('use-curated', isPreset);
   updatePoseDots(); setZoom(1);
-  if(userData.photo && !userData.photoPreset){ drawPhotoArt() } else { drawHero() }
+  if(!isPreset && userData.photo){ drawPhotoArt() } else { drawHero() }
 }
 
 /* ===== 照片艺术化渲染 ===== */
