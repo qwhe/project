@@ -535,7 +535,135 @@ function renderConfirm(){
   $$('.style-btn').forEach(b=>b.classList.toggle('active',b.dataset.style===userData.style));
   const preview = $('#studio-preview');
   if (preview) preview.classList.toggle('use-curated', !!userData.photoPreset);
-  updatePoseDots(); setZoom(1); drawHero();
+  updatePoseDots(); setZoom(1);
+  if(userData.photo && !userData.photoPreset){ drawPhotoArt() } else { drawHero() }
+}
+
+/* ===== 照片艺术化渲染 ===== */
+function drawPhotoArt(canvas=$('#hero-canvas')){
+  const ctx=canvas.getContext('2d'), w=820, h=1060, s=STYLE_PACKS[userData.style];
+  ctx.clearRect(0,0,w,h);
+  const g=ctx.createLinearGradient(0,0,w,h); g.addColorStop(0,'#FFFFFF'); g.addColorStop(.48,s.bg); g.addColorStop(1,shade(s.primary,.72)); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  drawDecor(ctx,s,w,h);
+  const img=new Image(); img.crossOrigin='anonymous';
+  img.onload=()=>{
+    ctx.save();
+    const cx=w/2, cy=480, size=Math.min(480,w-120), ratio=img.width/img.height;
+    const iw=ratio>1?size:size*ratio, ih=ratio>1?size/ratio:size;
+    const rx=8, ry=8;
+    ctx.beginPath();
+    if(CanvasRenderingContext2D.prototype.roundRect){ctx.roundRect(cx-iw/2,cy-ih/2,iw,ih,rx,ry)}
+    else{roundedRect(ctx,cx-iw/2,cy-ih/2,iw,ih,Math.max(rx,ry))}
+    ctx.clip();
+    ctx.filter='saturate(1.4) contrast(1.1) brightness(1.05)';
+    if(s.name==='复古风') ctx.filter='saturate(.85) contrast(1.15) sepia(.25)';
+    if(s.name==='潮酷风') ctx.filter='saturate(1.6) contrast(1.2) hue-rotate(-10deg)';
+    if(s.name==='手绘风') ctx.filter='saturate(1.1) contrast(1.05) brightness(1.08)';
+    ctx.drawImage(img,cx-iw/2,cy-ih/2,iw,ih);
+    ctx.filter='none';
+    ctx.restore();
+    ctx.save();
+    ctx.strokeStyle=s.primary; ctx.lineWidth=6; ctx.beginPath();
+    if(CanvasRenderingContext2D.prototype.roundRect){ctx.roundRect(cx-iw/2-6,cy-ih/2-6,iw+12,ih+12,rx+4,ry+4)}
+    else{roundedRect(ctx,cx-iw/2-6,cy-ih/2-6,iw+12,ih+12,Math.max(rx+4,ry+4))}
+    ctx.stroke();
+    ctx.strokeStyle=s.secondary; ctx.lineWidth=2; ctx.setLineDash([8,6]);
+    if(CanvasRenderingContext2D.prototype.roundRect){ctx.roundRect(cx-iw/2-14,cy-ih/2-14,iw+28,ih+28,rx+8,ry+8)}
+    else{roundedRect(ctx,cx-iw/2-14,cy-ih/2-14,iw+28,ih+28,Math.max(rx+8,ry+8))}
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+    drawName(ctx,s,userData.nickname,w,h);
+  };
+  img.src=userData.photo;
+}
+
+/* ===== 照片资产卡片生成 ===== */
+function renderPhotoAssets(body){
+  if(!userData.photo) return;
+  const s=STYLE_PACKS[userData.style];
+  addPhotoAssetSection(body,'主立绘',true);
+  addPhotoAssetSection(body,'表情包',false,[
+    ['表情包套组','可爱','😊'],['酷表情','酷酷','😎'],['复古表情','怀旧','📺'],['手绘表情','涂鸦','✏️']
+  ]);
+  addPhotoAssetSection(body,'节日海报',false,[
+    ['节日海报','节日限定','🎊'],['活动海报','活动推广','🎪'],['主题海报','主题视觉','🎨']
+  ]);
+  addPhotoAssetSection(body,'周边 Mockup',false,[
+    ['周边组合','实物应用','📱'],['商品展示','商品呈现','🏷️'],['印刷物料','纸品周边','🖨️']
+  ]);
+  addPhotoAssetSection(body,'社交封面',false,[
+    ['社交封面','多平台封面','💬'],['平台视觉','平台延展','🌐'],['头像套组','头像系列','👤']
+  ]);
+}
+function addPhotoAssetSection(parent,title,large=false,subItems=[]){
+  const sec=document.createElement('section');sec.className='asset-section';sec.innerHTML=`<h2>${title}</h2>`;
+  const row=document.createElement('div');row.className='asset-row';
+  const c=document.createElement('canvas');c.width=large?820:480;c.height=large?1060:620;
+  const ctx=c.getContext('2d'), w=c.width, h=c.height, s=STYLE_PACKS[userData.style];
+  const img=new Image();img.crossOrigin='anonymous';
+  img.onload=()=>{
+    const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,'#FFFFFF');g.addColorStop(.48,s.bg);g.addColorStop(1,shade(s.primary,.72));ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+    drawDecor(ctx,s,w,h);
+    const cx=w/2,cy=h/2-10,size=Math.min(Math.min(w,h)*0.7,w-100),ratio=img.width/img.height;
+    const iw=ratio>1?size:size*ratio,ih=ratio>1?size/ratio:size;
+    ctx.save();ctx.beginPath();
+    if(CanvasRenderingContext2D.prototype.roundRect){ctx.roundRect(cx-iw/2,cy-ih/2,iw,ih,12)}else{roundedRect(ctx,cx-iw/2,cy-ih/2,iw,ih,12)}
+    ctx.clip();
+    ctx.filter='saturate(1.4) contrast(1.1) brightness(1.05)';
+    if(s.name==='复古风') ctx.filter='saturate(.85) contrast(1.15) sepia(.25)';
+    if(s.name==='潮酷风') ctx.filter='saturate(1.6) contrast(1.2) hue-rotate(-10deg)';
+    if(s.name==='手绘风') ctx.filter='saturate(1.1) contrast(1.05) brightness(1.08)';
+    ctx.drawImage(img,cx-iw/2,cy-ih/2,iw,ih);ctx.filter='none';ctx.restore();
+    ctx.strokeStyle=s.primary;ctx.lineWidth=4;ctx.beginPath();
+    if(CanvasRenderingContext2D.prototype.roundRect){ctx.roundRect(cx-iw/2-4,cy-ih/2-4,iw+8,ih+8,14)}else{roundedRect(ctx,cx-iw/2-4,cy-ih/2-4,iw+8,ih+8,14)}
+    ctx.stroke();
+    ctx.textAlign='center';ctx.fillStyle='#fff';ctx.strokeStyle='rgba(26,26,26,.8)';ctx.lineWidth=6;
+    ctx.font=`900 ${large?48:28}px "PingFang SC",sans-serif`;
+    ctx.strokeText(userData.nickname,w/2,h-40);ctx.fillText(userData.nickname,w/2,h-40);
+    ctx.font=`800 ${large?22:14}px "PingFang SC",sans-serif`;ctx.fillStyle='#1A1A1A';
+    ctx.fillText(`${s.name} · 专属 IP`,w/2,h-(large?18:10));
+  };
+  img.src=userData.photo;
+  const card=document.createElement('div');card.className='asset-card curated-asset'+(large?' large':'');
+  card.innerHTML=`<span class="asset-badge">${large?'核心形象':'IP 资产'}</span>`;
+  card.appendChild(c);
+  const cap=document.createElement('div');cap.className='asset-cap';cap.textContent=large?`主立绘 · ${s.name}`:`${title} · ${s.name}`;
+  const note=document.createElement('p');note.className='asset-note';note.textContent=large?'基于你的照片生成的核心 IP 形象，可应用于各种延展场景':'基于你的照片生成的风格化 IP 资产';
+  const btn=document.createElement('button');btn.className='download';btn.textContent='💾';
+  btn.onclick=()=>{const a=document.createElement('a');a.download=`ZOME_${userData.nickname}_${title}.png`;a.href=c.toDataURL('image/png');a.click();showToast('已开始下载')};
+  card.appendChild(cap);card.appendChild(note);card.appendChild(btn);
+  row.appendChild(card);userData.assets.push([title,c]);
+  if(!large && subItems.length){
+    subItems.forEach(([label,styleTag,emoji])=>{
+      const sc=document.createElement('canvas');sc.width=420;sc.height=520;
+      const sctx=sc.getContext('2d'),sw=420,sh=520;
+      const simg=new Image();simg.crossOrigin='anonymous';
+      simg.onload=()=>{
+        const sg=sctx.createLinearGradient(0,0,sw,sh);sg.addColorStop(0,'#FFFFFF');sg.addColorStop(.5,s.bg);sg.addColorStop(1,shade(s.primary,.7));sctx.fillStyle=sg;sctx.fillRect(0,0,sw,sh);
+        drawDecor(sctx,s,sw,sh);
+        const scx=sw/2,scy=sh/2-20,ssize=Math.min(sw-80,300),sratio=simg.width/simg.height;
+        const siw=sratio>1?ssize:ssize*sratio,sih=sratio>1?ssize/sratio:ssize;
+        sctx.save();sctx.beginPath();
+        if(CanvasRenderingContext2D.prototype.roundRect){sctx.roundRect(scx-siw/2,scy-sih/2,siw,sih,10)}else{roundedRect(sctx,scx-siw/2,scy-sih/2,siw,sih,10)}
+        sctx.clip();sctx.filter='saturate(1.4) contrast(1.1) brightness(1.05)';
+        if(s.name==='复古风') sctx.filter='saturate(.85) contrast(1.15) sepia(.25)';
+        if(s.name==='潮酷风') sctx.filter='saturate(1.6) contrast(1.2) hue-rotate(-10deg)';
+        if(s.name==='手绘风') sctx.filter='saturate(1.1) contrast(1.05) brightness(1.08)';
+        sctx.drawImage(simg,scx-siw/2,scy-sih/2,siw,sih);sctx.filter='none';sctx.restore();
+        sctx.textAlign='center';sctx.font='800 18px sans-serif';sctx.fillStyle='#1A1A1A';sctx.fillText(`${emoji} ${label}`,sw/2,sh-16);
+      };
+      simg.src=userData.photo;
+      const subCard=document.createElement('div');subCard.className='asset-card curated-asset';
+      subCard.appendChild(sc);
+      const subCap=document.createElement('div');subCap.className='asset-cap';subCap.textContent=label;
+      const subNote=document.createElement('p');subNote.className='asset-note';subNote.textContent=styleTag;
+      const subBtn=document.createElement('button');subBtn.className='download';subBtn.textContent='💾';
+      subBtn.onclick=()=>{const a=document.createElement('a');a.download=`ZOME_${userData.nickname}_${label}.png`;a.href=sc.toDataURL('image/png');a.click();showToast('已开始下载')};
+      subCard.appendChild(subCap);subCard.appendChild(subNote);subCard.appendChild(subBtn);
+      row.appendChild(subCard);userData.assets.push([label,sc]);
+    });
+  }
+  sec.appendChild(row);parent.appendChild(sec);
 }
 
 function roundedRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
@@ -638,6 +766,8 @@ function renderAssets(){
   $('#asset-meta').textContent=`${STYLE_PACKS[userData.style].name} · ${ensureTraits().join(' / ')}`;
   const thumb=$('#asset-thumb');thumb.innerHTML=''; if(userData.photo){const img=new Image();img.src=userData.photo;thumb.appendChild(img)}else thumb.textContent=PRESETS[userData.photoPreset]?.emoji||'📸';
   const body=$('#asset-body');body.innerHTML='<section class="asset-hero"><h2>资产包已生成</h2><p>这不是一张孤立头像，而是一套可以继续运营的 IP 视觉资产。每张卡片都可以单独下载。</p></section>';
+  if(userData.photo && !userData.photoPreset){ renderPhotoAssets(body) }
+  else {
   addCuratedSection(body,'主立绘',[
     ['主立绘',CURATED_ASSETS.hero,'用精修猫咪 IP 形象承载最终产出，不再展示粗糙手绘占位图','核心形象']
   ],true);
@@ -654,6 +784,7 @@ function renderAssets(){
     ['社交封面套组',CURATED_ASSETS.social,'统一呈现多平台社交封面风格','社交']
   ]);
   const actions=document.createElement('div');actions.className='bottom-actions';actions.innerHTML='<button class="btn" onclick="downloadAllAssets()">下载全部资产</button><button class="btn secondary" onclick="resetDemo()">重新造一个</button>';body.appendChild(actions);
+  }
 }
 function addCuratedSection(parent,title,items,large=false){
   const sec=document.createElement('section');sec.className='asset-section';sec.innerHTML=`<h2>${title}</h2>`;
