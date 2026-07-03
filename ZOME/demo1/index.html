@@ -165,8 +165,8 @@
     .preview-stage{position:relative;display:grid;place-items:center;transition:transform .18s var(--smooth);touch-action:none}
     .art-card{width:min(440px,82vw);height:auto;border:1px solid rgba(255,255,255,.8);border-radius:38px;background:#fff;box-shadow:var(--shadow-lg);display:block;transition:opacity .2s var(--smooth),transform .2s var(--smooth)}
     .art-card.redraw{opacity:.35;transform:scale(.98)}
-    .pose-arrow{position:absolute;top:50%;translate:0 -50%;width:54px;height:54px;border:1px solid rgba(255,255,255,.6);border-radius:50%;background:rgba(255,255,255,.92);box-shadow:var(--shadow-sm);font-size:1.6rem;font-weight:1000;cursor:pointer;z-index:3;color:var(--accent);transition:.2s var(--bounce)}
-    .pose-arrow:hover{transform:translateY(-50%) scale(1.12);box-shadow:0 10px 30px rgba(0,0,0,.15);background:#fff}
+    .pose-arrow{position:absolute;top:50%;transform:translateY(-50%);width:54px;height:54px;border:1px solid rgba(255,255,255,.6);border-radius:50%;background:rgba(255,255,255,.92);box-shadow:var(--shadow-sm);font-size:1.6rem;font-weight:1000;cursor:pointer;z-index:3;color:var(--accent);transition:.2s var(--bounce)}
+    .pose-arrow:hover{transform:translateY(-58%);box-shadow:0 10px 30px rgba(0,0,0,.15);background:#fff;border-color:var(--accent-light)}
     .pose-arrow.left{left:0}.pose-arrow.right{right:0}
     .zoom-badge{position:absolute;left:50%;bottom:6px;translate:-50% 0;background:var(--ink);color:#fff;border-radius:999px;padding:7px 13px;font-size:.78rem;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.2)}
     .control-panel{border:1px solid rgba(255,218,190,.8);border-radius:34px;background:rgba(255,255,255,.9);box-shadow:0 18px 60px rgba(0,0,0,.08),0 0 0 1px rgba(255,255,255,.6);padding:22px;backdrop-filter:blur(10px);transition:.3s var(--smooth)}
