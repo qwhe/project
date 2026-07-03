@@ -933,6 +933,21 @@ function drawTriview() {
     drawTriviewCanvas(cvs.getContext('2d'), i, cvs.width, cvs.height);
   }
 }
+function getAssetImageSrc(){
+  if(userData.photoPreset==='pet') return PRESET_STYLE_IMAGES[userData.style]||PRESET_STYLE_IMAGES.cute;
+  return CURATED_ASSETS.hero;
+}
+function getImageSpecs(type){
+  const specs={
+    triview:'1024×1024px · PNG · 透明底 · 300dpi',
+    emoji:'240×240px · PNG · 透明底 · 72dpi',
+    poster:'1080×1920px · JPG · 150dpi',
+    phonecase:'540×960px · PNG · 300dpi',
+    totebag:'800×1000px · PNG · 300dpi',
+    sticker:'500×500px · PNG · 300dpi'
+  };
+  return specs[type]||'PNG · 300dpi';
+}
 function drawTriviewCanvas(ctx, poseIndex, w, h) {
   const s = STYLE_PACKS[userData.style];
   const g = ctx.createLinearGradient(0, 0, w, h);
@@ -942,14 +957,28 @@ function drawTriviewCanvas(ctx, poseIndex, w, h) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
   drawDecor(ctx, s, w, h);
-  drawCharacterFull(ctx, userData.style, userData.type, poseIndex, userData.nickname, w, h);
-  const poseLabels = ['正面视图', '侧面视图', '背面视图'];
-  ctx.save();
-  ctx.font = '700 14px var(--font-body)';
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
-  ctx.textAlign = 'center';
-  ctx.fillText(poseLabels[poseIndex], w / 2, h - 16);
-  ctx.restore();
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const iw = w - 32, ih = h - 110, x = 16, y = 16;
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(x, y, iw, ih, 20); ctx.clip();
+    const ratio = img.width / img.height;
+    let sw, sh;
+    if (ratio > iw / ih) { sh = ih; sw = ih * ratio; } else { sw = iw; sh = iw / ratio; }
+    const sx = x + (iw - sw) / 2, sy = y + (ih - sh) / 2;
+    ctx.drawImage(img, sx, sy, sw, sh);
+    ctx.restore();
+    // 规格标注
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.roundRect(16, h - 78, w - 32, 60, 16); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '700 15px var(--font-body)'; ctx.textAlign = 'center';
+    ctx.fillText(['正面视图 · Front','侧面视图 · Side','背面视图 · Back'][poseIndex], w / 2, h - 56);
+    ctx.font = '600 11px var(--font-body)'; ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillText(getImageSpecs('triview'), w / 2, h - 34);
+    ctx.restore();
+  };
+  img.src = getAssetImageSrc();
 }
 
 /* ===== 表情包编辑器 ===== */
@@ -1016,19 +1045,35 @@ function drawEmojiCardCanvas(ctx, index, w, h) {
   ctx.fillRect(0, 0, w, h);
   drawDecor(ctx, s, w, h);
   drawNoise(ctx, w, h);
-  const cx = w / 2, headSize = 140;
-  drawHead(ctx, s, userData.type, index, headSize);
-  drawFace(ctx, s, userData.type, index, EXPRESSIONS[index]);
-  ctx.save();
-  ctx.font = `${Math.min(48, w * 0.15)}px serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText(EXPRESSION_EMOJIS[index], cx, 60);
-  const label = userData.emojiSemantics[index] || EXPRESSION_LABELS[index];
-  ctx.font = '700 18px var(--font-body)';
-  ctx.fillStyle = shade(s.primary, 0.6);
-  ctx.textAlign = 'center';
-  ctx.fillText(label, cx, h - 28);
-  ctx.restore();
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    // 圆形裁剪画图片
+    const size = Math.min(w, h) - 90;
+    const x = (w - size) / 2, y = 44;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(w / 2, y + size / 2, size / 2, 0, Math.PI * 2); ctx.clip();
+    const ratio = img.width / img.height;
+    let sw, sh;
+    if (ratio > 1) { sh = size; sw = size * ratio; } else { sw = size; sh = size / ratio; }
+    const sx = (w - sw) / 2, sy = y + (size - sh) / 2;
+    ctx.drawImage(img, sx, sy, sw, sh);
+    ctx.restore();
+    // 表情 emoji
+    ctx.font = `${Math.min(44, w * 0.13)}px serif`; ctx.textAlign = 'center';
+    ctx.fillText(EXPRESSION_EMOJIS[index], w / 2, 32);
+    // 语义标签
+    const label = userData.emojiSemantics[index] || EXPRESSION_LABELS[index];
+    ctx.font = '700 16px var(--font-body)'; ctx.fillStyle = shade(s.primary, 0.6); ctx.textAlign = 'center';
+    ctx.fillText(label, w / 2, h - 52);
+    // 规格标注
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath(); ctx.roundRect(10, h - 42, w - 20, 28, 10); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = '600 10px var(--font-body)'; ctx.textAlign = 'center';
+    ctx.fillText(getImageSpecs('emoji'), w / 2, h - 24);
+    ctx.restore();
+  };
+  img.src = getAssetImageSrc();
 }
 function regenerateEmoji(index) {
   const card = $('#emoji-grid')?.children[index];
@@ -1114,29 +1159,38 @@ function drawPosterCardCanvas(ctx, index, w, h) {
   ctx.fillRect(0, 0, w, h);
   drawDecor(ctx, s, w, h);
   drawNoise(ctx, w, h);
-  const margin = 26;
-  const charW = 220, charH = 280;
-  const charCvs = makeAssetCanvas(charW, charH, (c, cw, ch) => drawCharacterFull(c, userData.style, userData.type, userData.pose, userData.nickname, cw, ch));
-  ctx.save();
-  ctx.globalAlpha = 0.85;
-  ctx.drawImage(charCvs, w / 2 - charW / 2, 110, charW, charH);
-  ctx.restore();
-  const title = userData.posterPrompts[index] || theme.defaultPrompt;
-  ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.46)';
-  ctx.shadowBlur = 32;
-  ctx.shadowOffsetY = 4;
-  ctx.font = `900 ${Math.min(34, w * 0.07)}px var(--font-display)`;
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
-  wrapText(ctx, title, w / 2, 490, w - 60, 42);
-  ctx.restore();
-  ctx.save();
-  ctx.font = '700 14px var(--font-body)';
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.textAlign = 'center';
-  ctx.fillText('ZOME · 你造吗', w / 2, h - 24);
-  ctx.restore();
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    // 图片区域
+    const imgH = h * 0.52;
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(20, 20, w - 40, imgH, 20); ctx.clip();
+    const ratio = img.width / img.height;
+    let sw = w - 40, sh = imgH;
+    if (ratio > sw / sh) { sh = sw / ratio; } else { sw = sh * ratio; }
+    const sx = 20 + ((w - 40) - sw) / 2, sy = 20 + (imgH - sh) / 2;
+    ctx.drawImage(img, sx, sy, sw, sh);
+    ctx.restore();
+    // 标题
+    const title = userData.posterPrompts[index] || theme.defaultPrompt;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.46)'; ctx.shadowBlur = 32; ctx.shadowOffsetY = 4;
+    ctx.font = `900 ${Math.min(32, w * 0.065)}px var(--font-display)`; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    wrapText(ctx, title, w / 2, imgH + 70, w - 60, 40);
+    ctx.restore();
+    // 品牌 + 规格标注
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.roundRect(20, h - 52, w - 40, 32, 12); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = '600 11px var(--font-body)'; ctx.textAlign = 'center';
+    ctx.fillText(`${theme.label} · ${getImageSpecs('poster')}`, w / 2, h - 32);
+    ctx.restore();
+    ctx.save();
+    ctx.font = '700 13px var(--font-body)'; ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.textAlign = 'center';
+    ctx.fillText('ZOME · 你造吗', w / 2, h - 64);
+    ctx.restore();
+  };
+  img.src = getAssetImageSrc();
 }
 function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   const chars = text.split('');
@@ -1250,13 +1304,24 @@ function drawPosterAsset(ctx,c,label){
 }
 function drawPhoneCaseAsset(ctx,c){
   ctx.fillStyle='#f7f2eb';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#fff';roundedRect(ctx,70,30,280,660,48);ctx.fill();ctx.strokeStyle='#1A1A1A';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#1A1A1A';ctx.beginPath();ctx.arc(125,88,20,0,7);ctx.fill();
-  const tmp=makeAssetCanvas(220,285,(t,cc)=>drawCharacterFull(t,userData.style,userData.type,userData.pose,userData.nickname,cc.width,cc.height));ctx.drawImage(tmp,100,230,220,285);
+  const img=new Image();img.crossOrigin='anonymous';
+  img.onload=()=>{ctx.save();ctx.beginPath();ctx.roundRect(100,230,220,285,30);ctx.clip();ctx.drawImage(img,100,230,220,285);ctx.restore();};
+  img.src=getAssetImageSrc();
+  ctx.save();ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.roundRect(20,c.height-48,c.width-40,28,10);ctx.fill();ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font='600 11px var(--font-body)';ctx.textAlign='center';ctx.fillText(getImageSpecs('phonecase'),c.width/2,c.height-28);ctx.restore();
 }
 function drawToteBagAsset(ctx,c){
-  const s=STYLE_PACKS[userData.style];ctx.fillStyle='#fffaf2';ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle='#1A1A1A';ctx.lineWidth=8;ctx.fillStyle=s.bg;ctx.beginPath();ctx.moveTo(95,150);ctx.lineTo(65,515);ctx.quadraticCurveTo(260,560,455,515);ctx.lineTo(425,150);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(170,155);ctx.quadraticCurveTo(170,55,260,55);ctx.quadraticCurveTo(350,55,350,155);ctx.stroke();const tmp=makeAssetCanvas(210,272,(t,cc)=>drawCharacterFull(t,userData.style,userData.type,userData.pose,userData.nickname,cc.width,cc.height));ctx.drawImage(tmp,155,220,210,272);
+  const s=STYLE_PACKS[userData.style];ctx.fillStyle='#fffaf2';ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle='#1A1A1A';ctx.lineWidth=8;ctx.fillStyle=s.bg;ctx.beginPath();ctx.moveTo(95,150);ctx.lineTo(65,515);ctx.quadraticCurveTo(260,560,455,515);ctx.lineTo(425,150);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(170,155);ctx.quadraticCurveTo(170,55,260,55);ctx.quadraticCurveTo(350,55,350,155);ctx.stroke();
+  const img=new Image();img.crossOrigin='anonymous';
+  img.onload=()=>{ctx.save();ctx.beginPath();ctx.roundRect(155,220,210,272,24);ctx.clip();ctx.drawImage(img,155,220,210,272);ctx.restore();};
+  img.src=getAssetImageSrc();
+  ctx.save();ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.roundRect(20,c.height-48,c.width-40,28,10);ctx.fill();ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font='600 11px var(--font-body)';ctx.textAlign='center';ctx.fillText(getImageSpecs('totebag'),c.width/2,c.height-28);ctx.restore();
 }
 function drawStickerAsset(ctx,c){
-  const s=STYLE_PACKS[userData.style];ctx.fillStyle=s.bg;ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle=s.accent;ctx.lineWidth=10;ctx.beginPath();for(let i=0;i<42;i++){const a=i/42*Math.PI*2,r=180+(i%2?14:-8),x=210+Math.cos(a)*r,y=210+Math.sin(a)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.stroke();const tmp=makeAssetCanvas(250,325,(t,cc)=>drawCharacterFull(t,userData.style,userData.type,userData.pose,userData.nickname,cc.width,cc.height));ctx.drawImage(tmp,85,55,250,325);
+  const s=STYLE_PACKS[userData.style];ctx.fillStyle=s.bg;ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle=s.accent;ctx.lineWidth=10;ctx.beginPath();for(let i=0;i<42;i++){const a=i/42*Math.PI*2,r=180+(i%2?14:-8),x=210+Math.cos(a)*r,y=210+Math.sin(a)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.stroke();
+  const img=new Image();img.crossOrigin='anonymous';
+  img.onload=()=>{ctx.save();ctx.beginPath();ctx.roundRect(85,55,250,325,28);ctx.clip();ctx.drawImage(img,85,55,250,325);ctx.restore();};
+  img.src=getAssetImageSrc();
+  ctx.save();ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.roundRect(20,c.height-48,c.width-40,28,10);ctx.fill();ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font='600 11px var(--font-body)';ctx.textAlign='center';ctx.fillText(getImageSpecs('sticker'),c.width/2,c.height-28);ctx.restore();
 }
 function drawSocialAsset(ctx,c,platform){
   const s=STYLE_PACKS[userData.style];ctx.fillStyle=s.bg;ctx.fillRect(0,0,c.width,c.height);drawDecor(ctx,s,c.width,c.height);const tmp=makeAssetCanvas(260,336,(t,cc)=>drawCharacterFull(t,userData.style,userData.type,userData.pose,userData.nickname,cc.width,cc.height));
