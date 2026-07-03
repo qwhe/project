@@ -161,7 +161,8 @@
     #stage-confirm:before{content:"";position:absolute;inset:0;background:radial-gradient(circle,rgba(255,184,0,.05) 0 2px,transparent 3px);background-size:40px 40px;opacity:.4}
     .confirm-shell,.studio-shell{width:min(1180px,100%);margin:0 auto;padding-top:64px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:34px;align-items:center;position:relative;z-index:2}
     .hero-card-wrap,.studio-preview{position:relative;display:grid;place-items:center;min-height:600px}
-    .canvas-stage{position:relative;transition:transform .18s var(--smooth);touch-action:none}
+    .canvas-stage{position:relative}
+    .preview-stage{position:relative;display:grid;place-items:center;transition:transform .18s var(--smooth);touch-action:none}
     .art-card{width:min(440px,82vw);height:auto;border:1px solid rgba(255,255,255,.8);border-radius:38px;background:#fff;box-shadow:var(--shadow-lg);display:block;transition:opacity .2s var(--smooth),transform .2s var(--smooth)}
     .art-card.redraw{opacity:.35;transform:scale(.98)}
     .pose-arrow{position:absolute;top:50%;translate:0 -50%;width:54px;height:54px;border:1px solid rgba(255,255,255,.6);border-radius:50%;background:rgba(255,255,255,.92);box-shadow:var(--shadow-sm);font-size:1.6rem;font-weight:1000;cursor:pointer;z-index:3;color:var(--accent);transition:.2s var(--bounce)}
@@ -242,6 +243,7 @@
     .curated-preview{width:min(520px,86vw);border-radius:42px;box-shadow:0 32px 110px rgba(0,0,0,.2),0 0 0 8px rgba(255,255,255,.8);position:relative;z-index:2;background:#fff;display:none;transition:.3s var(--smooth)}
     .curated-preview:hover{transform:translateY(-4px);box-shadow:0 40px 130px rgba(0,0,0,.25),0 0 0 10px rgba(255,255,255,.9)}
     .studio-preview.use-curated .curated-preview{display:block}
+    .studio-preview:not(.use-curated) .curated-preview{display:none}
     .studio-preview.use-curated .canvas-stage{display:none}
 
     .asset-hero{margin:0 0 28px;padding:28px;border-radius:34px;background:linear-gradient(135deg,var(--accent),var(--warm));color:#fff;box-shadow:0 24px 90px rgba(255,107,0,.24);display:flex;align-items:center;justify-content:space-between;gap:18px;position:relative;overflow:hidden}
@@ -360,8 +362,10 @@
     <div class="studio-shell">
       <div class="studio-preview" id="studio-preview">
         <button class="pose-arrow left" onclick="changePose(-1)" aria-label="上一个姿势">‹</button>
-        <div class="canvas-stage" id="canvas-stage">
-          <canvas class="art-card" id="hero-canvas" width="820" height="1060"></canvas>
+        <div class="preview-stage" id="preview-stage">
+          <div class="canvas-stage" id="canvas-stage">
+            <canvas class="art-card" id="hero-canvas" width="820" height="1060"></canvas>
+          </div>
           <img class="curated-preview" id="curated-preview" src="https://aka.doubaocdn.com/s/Okxe1whgXN" alt="AI 生成的 IP 示例">
           <div class="zoom-badge" id="zoom-badge">滚轮/双指可缩放 · 100%</div>
         </div>
@@ -535,16 +539,19 @@ function changePose(dir){
 function updatePoseDots(){ $('#pose-dots').innerHTML=[0,1,2].map(i=>`<span class="dot ${i===userData.pose?'active':''}"></span>`).join('') }
 function setZoom(next){
   userData.zoom=Math.max(.55,Math.min(1.8,next));
-  $('#canvas-stage').style.transform=`scale(${userData.zoom})`;
+  $('#preview-stage').style.transform=`scale(${userData.zoom})`;
   $('#zoom-badge').textContent=`滚轮/双指可缩放 · ${Math.round(userData.zoom*100)}%`;
 }
-$('#canvas-stage')?.addEventListener('wheel',e=>{e.preventDefault();setZoom(userData.zoom + (e.deltaY<0?.08:-.08))},{passive:false});
-let touchStartX=0,touchDist=0;
-$('#canvas-stage')?.addEventListener('touchstart',e=>{if(e.touches.length===1)touchStartX=e.touches[0].clientX;if(e.touches.length===2)touchDist=dist(e.touches[0],e.touches[1])},{passive:true});
-$('#canvas-stage')?.addEventListener('touchmove',e=>{
-  if(e.touches.length===2){e.preventDefault();const d=dist(e.touches[0],e.touches[1]);setZoom(userData.zoom+(d-touchDist)/900);touchDist=d}
-},{passive:false});
-$('#canvas-stage')?.addEventListener('touchend',e=>{if(touchStartX){const dx=(e.changedTouches[0]?.clientX||touchStartX)-touchStartX;if(Math.abs(dx)>60)changePose(dx<0?1:-1);touchStartX=0}});
+const ps=$('#preview-stage');
+if(ps){
+  ps.addEventListener('wheel',e=>{e.preventDefault();setZoom(userData.zoom + (e.deltaY<0?.08:-.08))},{passive:false});
+  let touchStartX=0,touchDist=0;
+  ps.addEventListener('touchstart',e=>{if(e.touches.length===1)touchStartX=e.touches[0].clientX;if(e.touches.length===2)touchDist=dist(e.touches[0],e.touches[1])},{passive:true});
+  ps.addEventListener('touchmove',e=>{
+    if(e.touches.length===2){e.preventDefault();const d=dist(e.touches[0],e.touches[1]);setZoom(userData.zoom+(d-touchDist)/900);touchDist=d}
+  },{passive:false});
+  ps.addEventListener('touchend',e=>{if(touchStartX){const dx=(e.changedTouches[0]?.clientX||touchStartX)-touchStartX;if(Math.abs(dx)>60)changePose(dx<0?1:-1);touchStartX=0}});
+}
 function dist(a,b){return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)}
 window.addEventListener('keydown',e=>{if($('#stage-confirm').classList.contains('active')){if(e.key==='ArrowLeft')changePose(-1);if(e.key==='ArrowRight')changePose(1)}})
 
@@ -557,7 +564,13 @@ function renderConfirm(){
   const isPreset = !!userData.photoPreset;
   if (preview) preview.classList.toggle('use-curated', isPreset);
   updatePoseDots(); setZoom(1);
-  if(!isPreset && userData.photo){ drawPhotoArt() } else { drawHero() }
+  if(isPreset){
+    const presetMap = {pet:CURATED_ASSETS.sticker, person:CURATED_ASSETS.social, item:CURATED_ASSETS.merch, brand:CURATED_ASSETS.hero};
+    const img = $('#curated-preview');
+    if(img) img.src = presetMap[userData.photoPreset] || CURATED_ASSETS.hero;
+  } else {
+    if(userData.photo){ drawPhotoArt() } else { drawHero() }
+  }
 }
 
 /* ===== 照片艺术化渲染 ===== */
