@@ -526,7 +526,7 @@ function ensureTraits(){ if(!userData.traits.length) userData.traits=['圆润','
 function selectStyle(style){
   userData.style=style;
   $$('.style-btn').forEach(b=>b.classList.toggle('active',b.dataset.style===style));
-  if(userData.photoPreset){
+  if(userData.photoPreset==='pet'){
     const img=$('#curated-preview');
     if(img){
       img.style.transition='opacity .2s var(--smooth),transform .35s var(--smooth)';
@@ -536,7 +536,7 @@ function selectStyle(style){
         img.onload=()=>{img.style.opacity='1'};
       },90);
     }
-  } else {
+  } else if(!userData.photoPreset){
     $('#hero-canvas')?.classList.add('redraw');
     setTimeout(()=>{drawHero();$('#hero-canvas')?.classList.remove('redraw')},90);
   }
@@ -584,7 +584,14 @@ function renderConfirm(){
   updatePoseDots(); setZoom(1);
   if(isPreset){
     const img = $('#curated-preview');
-    if(img) img.src = PRESET_STYLE_IMAGES[userData.style] || PRESET_STYLE_IMAGES.cute;
+    if(img){
+      if(userData.photoPreset==='pet'){
+        img.src = PRESET_STYLE_IMAGES[userData.style] || PRESET_STYLE_IMAGES.cute;
+      } else {
+        const fallback = {person:CURATED_ASSETS.social, item:CURATED_ASSETS.merch, brand:CURATED_ASSETS.hero};
+        img.src = fallback[userData.photoPreset] || CURATED_ASSETS.hero;
+      }
+    }
   } else {
     if(userData.photo){ drawPhotoArt() } else { drawHero() }
   }
