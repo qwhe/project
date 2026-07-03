@@ -523,13 +523,14 @@ function samplePhotoColor(src){
 }
 function ensureTraits(){ if(!userData.traits.length) userData.traits=['圆润','鲜明','有记忆点']; return userData.traits }
 
+const STYLE_KEYS = ['cute','cool','retro','handdrawn'];
 function selectStyle(style){
   userData.style=style;
   $$('.style-btn').forEach(b=>b.classList.toggle('active',b.dataset.style===style));
   if(userData.photoPreset==='pet'){
     const img=$('#curated-preview');
     if(img){
-      img.style.transition='opacity .2s var(--smooth),transform .35s var(--smooth)';
+      img.style.transition='opacity .2s var(--smooth)';
       img.style.opacity='.5';
       setTimeout(()=>{
         img.src=PRESET_STYLE_IMAGES[style]||PRESET_STYLE_IMAGES.cute;
@@ -540,21 +541,25 @@ function selectStyle(style){
     $('#hero-canvas')?.classList.add('redraw');
     setTimeout(()=>{drawHero();$('#hero-canvas')?.classList.remove('redraw')},90);
   }
+  updatePoseDots();
 }
 function changePose(dir){
-  userData.pose=(userData.pose+dir+3)%3; updatePoseDots();
-  if(userData.photoPreset){
-    const img=$('#curated-preview');
-    if(img){
-      const transforms=['scale(1) rotate(0deg)','scale(1.04) rotate(-2deg) translateX(8px)','scale(.97) rotate(2deg) translateX(-6px)'];
-      img.style.transition='transform .35s var(--smooth)';
-      img.style.transform=transforms[userData.pose];
-    }
+  if(userData.photoPreset==='pet'){
+    const cur = STYLE_KEYS.indexOf(userData.style);
+    const next = (cur + dir + STYLE_KEYS.length) % STYLE_KEYS.length;
+    selectStyle(STYLE_KEYS[next]);
   } else {
+    userData.pose=(userData.pose+dir+3)%3; updatePoseDots();
     if(userData.photo){ drawPhotoArt() } else { drawHero() }
   }
 }
-function updatePoseDots(){ $('#pose-dots').innerHTML=[0,1,2].map(i=>`<span class="dot ${i===userData.pose?'active':''}"></span>`).join('') }
+function updatePoseDots(){
+  if(userData.photoPreset==='pet'){
+    $('#pose-dots').innerHTML=STYLE_KEYS.map(s=>`<span class="dot ${s===userData.style?'active':''}" title="${STYLE_PACKS[s].name}"></span>`).join('');
+  } else {
+    $('#pose-dots').innerHTML=[0,1,2].map(i=>`<span class="dot ${i===userData.pose?'active':''}"></span>`).join('');
+  }
+}
 function setZoom(next){
   userData.zoom=Math.max(.55,Math.min(1.8,next));
   $('#preview-stage').style.transform=`scale(${userData.zoom})`;
