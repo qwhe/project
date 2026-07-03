@@ -431,6 +431,12 @@ const CURATED_ASSETS = {
   merch:'https://aka.doubaocdn.com/s/813D1whgXN',
   social:'https://aka.doubaocdn.com/s/GqSA1whgXN'
 };
+const PRESET_STYLE_IMAGES = {
+  cute:'https://qwhe.github.io/project/ZOME/assets/sample-pet-cute.png',
+  cool:'https://qwhe.github.io/project/ZOME/assets/sample-pet-cool.png',
+  retro:'https://qwhe.github.io/project/ZOME/assets/sample-pet-retro.png',
+  handdrawn:'https://qwhe.github.io/project/ZOME/assets/sample-pet-handdrawn.png'
+};
 const userData = {photo:null,photoPreset:null,type:'person',style:'cute',pose:0,nickname:'新朋友',traits:[],avgColor:'#ffb36b',zoom:1,assets:[]};
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
@@ -520,8 +526,20 @@ function ensureTraits(){ if(!userData.traits.length) userData.traits=['圆润','
 function selectStyle(style){
   userData.style=style;
   $$('.style-btn').forEach(b=>b.classList.toggle('active',b.dataset.style===style));
-  $('#hero-canvas')?.classList.add('redraw');
-  setTimeout(()=>{drawHero();$('#hero-canvas')?.classList.remove('redraw')},90);
+  if(userData.photoPreset){
+    const img=$('#curated-preview');
+    if(img){
+      img.style.transition='opacity .2s var(--smooth),transform .35s var(--smooth)';
+      img.style.opacity='.5';
+      setTimeout(()=>{
+        img.src=PRESET_STYLE_IMAGES[style]||PRESET_STYLE_IMAGES.cute;
+        img.onload=()=>{img.style.opacity='1'};
+      },90);
+    }
+  } else {
+    $('#hero-canvas')?.classList.add('redraw');
+    setTimeout(()=>{drawHero();$('#hero-canvas')?.classList.remove('redraw')},90);
+  }
 }
 function changePose(dir){
   userData.pose=(userData.pose+dir+3)%3; updatePoseDots();
@@ -565,9 +583,8 @@ function renderConfirm(){
   if (preview) preview.classList.toggle('use-curated', isPreset);
   updatePoseDots(); setZoom(1);
   if(isPreset){
-    const presetMap = {pet:CURATED_ASSETS.sticker, person:CURATED_ASSETS.social, item:CURATED_ASSETS.merch, brand:CURATED_ASSETS.hero};
     const img = $('#curated-preview');
-    if(img) img.src = presetMap[userData.photoPreset] || CURATED_ASSETS.hero;
+    if(img) img.src = PRESET_STYLE_IMAGES[userData.style] || PRESET_STYLE_IMAGES.cute;
   } else {
     if(userData.photo){ drawPhotoArt() } else { drawHero() }
   }
