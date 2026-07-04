@@ -1026,7 +1026,7 @@ function drawEmojiGrid() {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         userData.emojiSemantics[i] = inp.value;
-        drawEmojiCardCanvas(cvs.getContext('2d'), i, cvs.width, cvs.height);
+        drawEmojiCardCanvas(cvs.getContext('2d'), i, i, cvs.width, cvs.height);
       }, 300);
     });
     controls.appendChild(inp);
@@ -1045,10 +1045,11 @@ function drawEmojiGrid() {
     controls.appendChild(dl);
     card.appendChild(controls);
     grid.appendChild(card);
-    drawEmojiCardCanvas(cvs.getContext('2d'), i, cvs.width, cvs.height);
+    drawEmojiCardCanvas(cvs.getContext('2d'), i, i, cvs.width, cvs.height);
   }
 }
-function drawEmojiCardCanvas(ctx, index, w, h) {
+function drawEmojiCardCanvas(ctx, cardIndex, exprIndex, w, h) {
+  exprIndex = exprIndex ?? cardIndex;
   const s = STYLE_PACKS[userData.style];
   const g = ctx.createLinearGradient(0, 0, w, h);
   g.addColorStop(0, '#FFFFFF');
@@ -1071,8 +1072,8 @@ function drawEmojiCardCanvas(ctx, index, w, h) {
     ctx.drawImage(img, sx, sy, sw, sh);
     ctx.restore();
     ctx.font = `${Math.min(44, w * 0.13)}px serif`; ctx.textAlign = 'center';
-    ctx.fillText(EXPRESSION_EMOJIS[index], w / 2, 32);
-    const label = userData.emojiSemantics[index] || EXPRESSION_LABELS[index];
+    ctx.fillText(EXPRESSION_EMOJIS[exprIndex], w / 2, 32);
+    const label = userData.emojiSemantics[cardIndex] || EXPRESSION_LABELS[exprIndex];
     ctx.font = '700 16px var(--font-body)'; ctx.fillStyle = shade(s.primary, 0.6); ctx.textAlign = 'center';
     ctx.fillText(label, w / 2, h - 52);
     ctx.save();
@@ -1084,16 +1085,20 @@ function drawEmojiCardCanvas(ctx, index, w, h) {
   };
   const styleKey = userData.style || 'cute';
   const imgs = (ASSET_IMAGES[styleKey] || ASSET_IMAGES.cute).emoji;
-  img.src = ASSET_BASE + (imgs[index] || imgs[0]);
+  img.src = ASSET_BASE + (imgs[exprIndex] || imgs[0]);
 }
 function regenerateEmoji(index) {
   const card = $('#emoji-grid')?.children[index];
   const cvs = card?.querySelector('canvas');
+  const inp = card?.querySelector('input');
   if (!card || !cvs) return;
   showLoader(card, () => {
-    const variation = Math.random() > 0.5 ? 1 : -1;
-    const seed = Math.floor(Math.random() * 100);
-    drawEmojiCardCanvas(cvs.getContext('2d'), (index + seed + variation) % 6, cvs.width, cvs.height);
+    const newIndex = (index + 1 + Math.floor(Math.random() * 5)) % 6;
+    if (inp) {
+      inp.value = EXPRESSION_LABELS[newIndex];
+      userData.emojiSemantics[index] = EXPRESSION_LABELS[newIndex];
+    }
+    drawEmojiCardCanvas(cvs.getContext('2d'), index, newIndex, cvs.width, cvs.height);
   });
 }
 function downloadAllEmojis() {
