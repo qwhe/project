@@ -335,16 +335,15 @@
     .api-status.err{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
     .api-status.idle{background:var(--paper);color:var(--muted);border:1px solid var(--line-strong)}
 
-    /* ===== 设置按钮 ===== */
-    .api-settings-btn{position:fixed;top:14px;right:14px;z-index:100;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px 0 12px;border-radius:999px;border:2px solid var(--accent);background:#fff;box-shadow:0 6px 20px rgba(255,107,0,.18);cursor:pointer;font-size:.82rem;font-weight:900;color:var(--accent);transition:.22s var(--bounce);font-family:inherit;white-space:nowrap}
-    .api-settings-btn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(255,107,0,.28);background:var(--paper)}
-    .api-settings-btn .gear-icon{font-size:1.05rem;line-height:1}
-    .api-settings-btn .api-label{line-height:1.1}
-    .api-settings-btn .api-sub{font-size:.62rem;font-weight:700;opacity:.65;display:block;margin-top:1px}
-    .api-settings-btn.has-api{background:linear-gradient(135deg,var(--accent),var(--warm));color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(255,107,0,.3)}
+    /* ===== 生图模型入口（上传页内嵌） ===== */
+    .api-settings-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:min(460px,100%);height:52px;margin:16px auto 0;padding:0 20px;border-radius:18px;border:2px solid var(--accent);background:#fff;box-shadow:0 6px 20px rgba(255,107,0,.12);cursor:pointer;font-size:.9rem;font-weight:900;color:var(--accent);transition:.22s var(--bounce);font-family:inherit;white-space:nowrap}
+    .api-settings-btn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(255,107,0,.22);background:var(--paper)}
+    .api-settings-btn .gear-icon{font-size:1.1rem;line-height:1}
+    .api-settings-btn .api-sub{font-size:.72rem;font-weight:700;opacity:.6;margin-left:4px}
+    .api-settings-btn.has-api{background:linear-gradient(135deg,var(--accent),var(--warm));color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(255,107,0,.25)}
     .api-settings-btn.has-api .api-sub{opacity:.85}
     .api-settings-btn:not(.has-api){animation:btnPulse 2.4s ease-in-out infinite}
-    @keyframes btnPulse{0%,100%{box-shadow:0 6px 20px rgba(255,107,0,.18)}50%{box-shadow:0 6px 28px rgba(255,107,0,.4),0 0 0 5px rgba(255,107,0,.08)}}
+    @keyframes btnPulse{0%,100%{box-shadow:0 6px 20px rgba(255,107,0,.12)}50%{box-shadow:0 6px 24px rgba(255,107,0,.3),0 0 0 4px rgba(255,107,0,.06)}}
 
     /* ===== Prompt 编辑器 ===== */
     .prompt-row{display:flex;align-items:center;gap:6px;padding:6px 10px;border-top:1px solid var(--line-strong);background:var(--paper)}
@@ -443,6 +442,11 @@
         <button class="preset-card" onclick="usePreset('item')"><b>☕</b><span>物品</span></button>
         <button class="preset-card" onclick="usePreset('brand')"><b>🏪</b><span>品牌</span></button>
       </div>
+      <button class="api-settings-btn" id="api-settings-btn" onclick="toggleApiModal()" title="生图模型 API 设置">
+        <span class="gear-icon">⚙️</span>
+        <span>生图模型 API</span>
+        <span class="api-sub" id="api-btn-sub">未连接</span>
+      </button>
     </div>
   </section>
 
@@ -516,12 +520,6 @@
     </header>
     <main class="asset-body asset-gallery-shell" id="asset-body"></main>
   </section>
-
-  <!-- API 设置按钮 -->
-  <button class="api-settings-btn" id="api-settings-btn" onclick="toggleApiModal()" title="生图模型 API 设置">
-    <span class="gear-icon">⚙️</span>
-    <span class="api-label">生图模型<span class="api-sub" id="api-btn-sub">未连接</span></span>
-  </button>
 
   <!-- API 配置弹窗 -->
   <div class="api-modal-overlay" id="api-modal-overlay">
