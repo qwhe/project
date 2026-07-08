@@ -126,7 +126,7 @@
     .upload-zone:after{content:"";position:absolute;inset:0;border-radius:40px;background:radial-gradient(circle at 50% 50%,rgba(255,107,0,.08),transparent 70%);opacity:0;transition:opacity .3s}
     .upload-zone:hover:after{opacity:1}
     .upload-core{display:grid;gap:10px;place-items:center;position:relative;z-index:2}.upload-icon{font-size:4rem}.upload-text{font-size:1.15rem;font-weight:1000}.upload-hint{color:var(--muted);font-weight:700;font-size:.9rem}
-    .preset-grid{margin:28px auto 0;width:min(520px,100%);display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .preset-grid{margin:16px auto 0;width:min(460px,100%);display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .preset-card{min-height:92px;border:1px solid var(--line-strong);border-radius:24px;background:#fff;box-shadow:var(--shadow-sm);display:grid;place-items:center;gap:4px;cursor:pointer;font-weight:900;transition:.22s var(--bounce);position:relative;overflow:hidden}
     .preset-card:after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.5) 50%,transparent 60%);transform:translateX(-100%)}
     .preset-card:hover{transform:translateY(-5px) scale(1.02);box-shadow:0 14px 34px rgba(255,107,0,.2);border-color:var(--accent-light)}
@@ -336,7 +336,7 @@
     .api-status.idle{background:var(--paper);color:var(--muted);border:1px solid var(--line-strong)}
 
     /* ===== 生图模型入口（上传页内嵌） ===== */
-    .api-settings-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:min(460px,100%);height:52px;margin:16px auto 0;padding:0 20px;border-radius:18px;border:2px solid var(--accent);background:#fff;box-shadow:0 6px 20px rgba(255,107,0,.12);cursor:pointer;font-size:.9rem;font-weight:900;color:var(--accent);transition:.22s var(--bounce);font-family:inherit;white-space:nowrap}
+    .api-settings-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:min(460px,100%);min-height:92px;margin:16px auto 0;padding:0 20px;border-radius:24px;border:2px solid var(--accent);background:#fff;box-shadow:0 6px 20px rgba(255,107,0,.12);cursor:pointer;font-size:1rem;font-weight:900;color:var(--accent);transition:.22s var(--bounce);font-family:inherit;white-space:nowrap}
     .api-settings-btn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(255,107,0,.22);background:var(--paper)}
     .api-settings-btn .gear-icon{font-size:1.1rem;line-height:1}
     .api-settings-btn .api-sub{font-size:.72rem;font-weight:700;opacity:.6;margin-left:4px}
@@ -436,17 +436,17 @@
         </div>
       </div>
       <input id="file-input" type="file" accept="image/*" class="hidden" onchange="handleFile(event)">
+      <button class="api-settings-btn" id="api-settings-btn" onclick="toggleApiModal()" title="生图模型 API 设置">
+        <span class="gear-icon">⚙️</span>
+        <span>生图模型 API</span>
+        <span class="api-sub" id="api-btn-sub">未连接</span>
+      </button>
       <div class="preset-grid">
         <button class="preset-card" onclick="usePreset('person')"><b>👤</b><span>人物</span></button>
         <button class="preset-card" onclick="usePreset('pet')"><b>🐱</b><span>宠物</span></button>
         <button class="preset-card" onclick="usePreset('item')"><b>☕</b><span>物品</span></button>
         <button class="preset-card" onclick="usePreset('brand')"><b>🏪</b><span>品牌</span></button>
       </div>
-      <button class="api-settings-btn" id="api-settings-btn" onclick="toggleApiModal()" title="生图模型 API 设置">
-        <span class="gear-icon">⚙️</span>
-        <span>生图模型 API</span>
-        <span class="api-sub" id="api-btn-sub">未连接</span>
-      </button>
     </div>
   </section>
 
