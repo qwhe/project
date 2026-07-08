@@ -336,9 +336,15 @@
     .api-status.idle{background:var(--paper);color:var(--muted);border:1px solid var(--line-strong)}
 
     /* ===== 设置按钮 ===== */
-    .api-settings-btn{position:fixed;top:16px;right:16px;z-index:100;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.92);backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.1);cursor:pointer;font-size:1.2rem;display:grid;place-items:center;transition:.2s var(--bounce);color:var(--accent)}
-    .api-settings-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.15)}
-    .api-settings-btn.has-api{background:linear-gradient(135deg,var(--accent),var(--warm));color:#fff;border-color:transparent}
+    .api-settings-btn{position:fixed;top:14px;right:14px;z-index:100;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px 0 12px;border-radius:999px;border:2px solid var(--accent);background:#fff;box-shadow:0 6px 20px rgba(255,107,0,.18);cursor:pointer;font-size:.82rem;font-weight:900;color:var(--accent);transition:.22s var(--bounce);font-family:inherit;white-space:nowrap}
+    .api-settings-btn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(255,107,0,.28);background:var(--paper)}
+    .api-settings-btn .gear-icon{font-size:1.05rem;line-height:1}
+    .api-settings-btn .api-label{line-height:1.1}
+    .api-settings-btn .api-sub{font-size:.62rem;font-weight:700;opacity:.65;display:block;margin-top:1px}
+    .api-settings-btn.has-api{background:linear-gradient(135deg,var(--accent),var(--warm));color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(255,107,0,.3)}
+    .api-settings-btn.has-api .api-sub{opacity:.85}
+    .api-settings-btn:not(.has-api){animation:btnPulse 2.4s ease-in-out infinite}
+    @keyframes btnPulse{0%,100%{box-shadow:0 6px 20px rgba(255,107,0,.18)}50%{box-shadow:0 6px 28px rgba(255,107,0,.4),0 0 0 5px rgba(255,107,0,.08)}}
 
     /* ===== Prompt 编辑器 ===== */
     .prompt-row{display:flex;align-items:center;gap:6px;padding:6px 10px;border-top:1px solid var(--line-strong);background:var(--paper)}
@@ -512,7 +518,10 @@
   </section>
 
   <!-- API 设置按钮 -->
-  <button class="api-settings-btn" id="api-settings-btn" onclick="toggleApiModal()" title="生图 API 设置">⚙️</button>
+  <button class="api-settings-btn" id="api-settings-btn" onclick="toggleApiModal()" title="生图模型 API 设置">
+    <span class="gear-icon">⚙️</span>
+    <span class="api-label">生图模型<span class="api-sub" id="api-btn-sub">未连接</span></span>
+  </button>
 
   <!-- API 配置弹窗 -->
   <div class="api-modal-overlay" id="api-modal-overlay">
@@ -582,9 +591,16 @@ function hasApiConfig(){
 }
 function getApiConfig(){try{return JSON.parse(localStorage.getItem(API_CONFIG_KEY)||'{}')}catch(e){return{}}}
 function updateApiStatus(hasCfg){
-  const s=$('#api-status'),btn=$('#api-settings-btn');
-  if(hasCfg&&hasApiConfig()){s.className='api-status ok';s.textContent='✅ 已配置 — 资产将实时生成';btn.classList.add('has-api')}
-  else{s.className='api-status idle';s.textContent='未配置 — 将使用内置示例图片';btn.classList.remove('has-api')}
+  const s=$('#api-status'),btn=$('#api-settings-btn'),sub=$('#api-btn-sub');
+  if(hasCfg&&hasApiConfig()){
+    s.className='api-status ok';s.textContent='✅ 已配置 — 资产将实时生成';
+    btn.classList.add('has-api');
+    if(sub)sub.textContent='已连接';
+  }else{
+    s.className='api-status idle';s.textContent='未配置 — 将使用内置示例图片';
+    btn.classList.remove('has-api');
+    if(sub)sub.textContent='未连接';
+  }
 }
 function toggleApiModal(force){
   const ov=$('#api-modal-overlay');
