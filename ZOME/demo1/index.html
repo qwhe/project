@@ -1538,82 +1538,64 @@ async function regeneratePoster(index) {
   hideRegenLoading(ov);
 }
 
-/* ===== 周边样机选择器 ===== */
+/* ===== 周边样机（三卡片网格） ===== */
 function renderMockupSection(parent) {
   const sec = document.createElement('section');
   sec.className = 'asset-section';
   sec.innerHTML = `<h2 style="font-size:1.3rem;margin:0 0 4px;display:flex;align-items:center;gap:8px"><span style="font-size:1.5rem">🛍️</span> 周边样机</h2>
-    <p style="color:var(--muted);font-size:.85rem;font-weight:700;margin:0 0 18px">选择不同样机类型，查看 IP 周边效果</p>
-    <div class="mockup-tabs" id="mockup-tabs"></div>
-    <div class="mockup-stage" id="mockup-stage" style="position:relative">
-      <canvas id="mockup-canvas" width="420" height="560"></canvas>
-    </div>
-    <div class="mockup-caption" id="mockup-caption">📱 手机壳 · 可随身携带的专属周边</div>
-    <div class="mockup-actions">
-      <button class="btn-sm primary" onclick="regenerateMockup()">🔄 重新生成</button>
-      <button class="btn-sm secondary" onclick="downloadCanvas($('#mockup-canvas'),'ZOME_'+userData.nickname+'_周边_'+userData.mockupType+'.png')">↓ 下载当前样机</button>
-    </div>
-    <div id="mockup-prompt-wrap"></div>`;
+    <p style="color:var(--muted);font-size:.85rem;font-weight:700;margin:0 0 18px">每个样机可单独编辑提示词、重新生成或下载</p>
+    <div class="poster-grid" id="mockup-grid"></div>`;
   parent.appendChild(sec);
-  drawMockupTabs();
-  drawCurrentMockup();
-  renderMockupPromptEditor();
+  drawMockupGrid();
 }
-function getMockupIndex(){return MOCKUP_TYPES.findIndex(m=>m.id===userData.mockupType)}
-function renderMockupPromptEditor(){
-  const wrap=$('#mockup-prompt-wrap');
-  if(!wrap)return;
-  wrap.innerHTML='';
-  const idx=getMockupIndex();
-  wrap.appendChild(createPromptEditor('mockup',idx,()=>regenerateMockup()));
-}
-function drawMockupTabs() {
-  const tabs = $('#mockup-tabs');
-  if (!tabs) return;
-  tabs.innerHTML = '';
-  MOCKUP_TYPES.forEach(mt => {
-    const btn = document.createElement('button');
-    btn.className = 'tab-btn' + (mt.id === userData.mockupType ? ' active' : '');
-    btn.innerHTML = `${mt.icon} ${mt.label}`;
-    btn.onclick = () => switchMockupType(mt.id);
-    tabs.appendChild(btn);
+function drawMockupGrid() {
+  const grid = $('#mockup-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  MOCKUP_TYPES.forEach((mt, i) => {
+    const card = document.createElement('div');
+    card.className = 'poster-card';
+    const cvs = document.createElement('canvas');
+    cvs.width = 420; cvs.height = 560;
+    card.appendChild(cvs);
+    const actions = document.createElement('div');
+    actions.className = 'poster-actions';
+    const regen = document.createElement('button');
+    regen.className = 'btn-sm primary';
+    regen.innerHTML = '🔄 重新生成';
+    regen.onclick = () => regenerateMockupCard(i);
+    actions.appendChild(regen);
+    const dl = document.createElement('button');
+    dl.className = 'btn-sm secondary';
+    dl.innerHTML = '↓ 下载';
+    dl.onclick = () => downloadCanvas(cvs, `ZOME_${userData.nickname}_周边_${mt.label}.png`);
+    actions.appendChild(dl);
+    card.appendChild(actions);
+    grid.appendChild(card);
+    drawMockupCardCanvas(cvs.getContext('2d'), i, cvs.width, cvs.height, false, card);
+    card.appendChild(createPromptEditor('mockup', i, () => regenerateMockupCard(i)));
   });
 }
-async function switchMockupType(typeId) {
-  userData.mockupType = typeId;
-  drawMockupTabs();
-  const stage = $('#mockup-stage');
-  const ov = showRegenLoading(stage);
-  await drawCurrentMockup();
-  hideRegenLoading(ov);
-  const caption = $('#mockup-caption');
-  if (caption) {
-    const mt = MOCKUP_TYPES.find(m => m.id === typeId);
-    caption.textContent = `${mt.icon} ${mt.label} · 可随身携带的专属周边`;
-  }
-  renderMockupPromptEditor();
+function drawMockupCardCanvas(ctx, index, w, h, forceRegen, cardEl) {
+  ctx.fillStyle = '#f5f0eb';
+  ctx.fillRect(0, 0, w, h);
+  drawLoadingText(ctx, w, h);
+  loadAssetImage('mockup', index, forceRegen).then(url => {
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.clearRect(0, 0, w, h);
+      drawImageCover(ctx, img, 0, 0, w, h);
+    };
+    img.onerror = () => { ctx.fillStyle='#f5f0eb';ctx.fillRect(0,0,w,h);ctx.fillStyle='rgba(0,0,0,.4)';ctx.font='600 13px sans-serif';ctx.textAlign='center';ctx.fillText('图片加载失败',w/2,h/2) };
+    img.src = url;
+  });
 }
-async function drawCurrentMockup(forceRegen) {
-  const cvs = $('#mockup-canvas');
-  if (!cvs) return;
-  const idx = getMockupIndex();
-  const ctx = cvs.getContext('2d');
-  const w = cvs.width, h = cvs.height;
-  ctx.fillStyle='#f5f0eb';ctx.fillRect(0,0,w,h);
-  drawLoadingText(ctx,w,h);
-  const url = await loadAssetImage('mockup', idx, forceRegen);
-  const img = new Image(); img.crossOrigin = 'anonymous';
-  img.onload = () => {
-    ctx.clearRect(0,0,w,h);
-    drawImageCover(ctx, img, 0, 0, w, h);
-  };
-  img.onerror=()=>{ctx.fillStyle='#f5f0eb';ctx.fillRect(0,0,w,h);ctx.fillStyle='rgba(0,0,0,.4)';ctx.font='600 13px sans-serif';ctx.textAlign='center';ctx.fillText('图片加载失败',w/2,h/2)};
-  img.src = url;
-}
-async function regenerateMockup() {
-  const stage = $('#mockup-stage');
-  const ov = showRegenLoading(stage);
-  await drawCurrentMockup(true);
+async function regenerateMockupCard(index) {
+  const card = $('#mockup-grid')?.children[index];
+  const cvs = card?.querySelector('canvas');
+  if (!card || !cvs) return;
+  const ov = showRegenLoading(card);
+  await drawMockupCardCanvas(cvs.getContext('2d'), index, cvs.width, cvs.height, true, card);
   hideRegenLoading(ov);
 }
 
