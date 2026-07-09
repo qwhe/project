@@ -581,6 +581,8 @@ function loadApiConfig(){
 function saveApiConfig(){
   const cfg={type:$('#api-type').value,endpoint:$('#api-endpoint').value.trim(),key:$('#api-key').value.trim(),model:$('#api-model').value.trim(),size:$('#api-size').value};
   localStorage.setItem(API_CONFIG_KEY,JSON.stringify(cfg));
+  for(const k in _imgCache)delete _imgCache[k];
+  for(const k in _regenCounters)delete _regenCounters[k];
   updateApiStatus(!!cfg.endpoint);
   toggleApiModal(false);
 }
@@ -619,12 +621,12 @@ function onApiTypeChange(){
     custom:{endpoint:'',model:''}
   };
   const p=presets[t]||{};
-  if(p.endpoint&&!$('#api-endpoint').value)$('#api-endpoint').value=p.endpoint;
-  if(p.model&&!$('#api-model').value)$('#api-model').value=p.model;
+  $('#api-endpoint').value=p.endpoint||'';
+  $('#api-model').value=p.model||'';
 }
 async function testApi(){
-  const cfg=getApiConfig();
-  if(!cfg.endpoint||!cfg.key){$('#api-status').className='api-status err';$('#api-status').textContent='❌ 请先填写并保存配置';return}
+  const cfg={type:$('#api-type').value,endpoint:$('#api-endpoint').value.trim(),key:$('#api-key').value.trim(),model:$('#api-model').value.trim(),size:$('#api-size').value};
+  if(!cfg.endpoint||!cfg.key){$('#api-status').className='api-status err';$('#api-status').textContent='❌ 请先填写 Endpoint 和 API Key';return}
   $('#api-status').className='api-status idle';$('#api-status').textContent='测试中...';
   try{
     const r=await callImageAPI('a simple test image: a red circle on white background',cfg);
