@@ -342,7 +342,7 @@
     .api-settings-btn .api-sub{font-size:.72rem;font-weight:700;opacity:.6;margin-left:4px}
     .api-settings-btn.has-api{background:linear-gradient(135deg,var(--accent),var(--warm));color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(255,107,0,.25)}
     .api-settings-btn.has-api .api-sub{opacity:.85}
-    .api-settings-btn:not(.has-api){animation:btnPulse 2.4s ease-in-out 4}
+    .api-settings-btn:not(.has-api){animation:btnPulse 2.4s ease-in-out infinite}
     @keyframes btnPulse{0%,100%{box-shadow:0 6px 20px rgba(255,107,0,.12)}50%{box-shadow:0 6px 24px rgba(255,107,0,.3),0 0 0 4px rgba(255,107,0,.06)}}
 
     /* ===== Prompt 编辑器 ===== */
@@ -370,7 +370,7 @@
   </style>
 </head>
 <body>
-  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div class="toast" id="toast"></div>
 
   <section class="stage active" id="stage-landing">
     <nav class="demo-nav">
@@ -930,28 +930,17 @@ function startAnalyze(){
 }
 function samplePhotoColor(src){
   const img = new Image();
-  img.crossOrigin = 'anonymous';
   img.onload = () => {
-    try{
-      const c=document.createElement('canvas'); c.width=32; c.height=32;
-      const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,32,32);
-      const d=ctx.getImageData(0,0,32,32).data; let r=0,g=0,b=0,n=0;
-      for(let i=0;i<d.length;i+=16){r+=d[i];g+=d[i+1];b+=d[i+2];n++}
-      r=Math.round(r/n);g=Math.round(g/n);b=Math.round(b/n);
-      userData.avgColor=`rgb(${r},${g},${b})`;
-      $('#photo-color-label').textContent=`取色 rgb(${r},${g},${b})`;
-      const warmth = r>b ? '暖色调' : '冷色调';
-      userData.traits=['照片特征', warmth, (r+g+b)/3>145?'明亮':'沉稳'];
-      userData.style = r>b ? 'cute' : 'cool';
-    }catch(e){
-      // 跨域取色失败，使用预设兜底，不阻塞流程
-      $('#photo-color-label').textContent='取色跳过';
-      if(!userData.traits.length)userData.traits=['圆润','鲜明','有记忆点'];
-    }
-  };
-  img.onerror = () => {
-    $('#photo-color-label').textContent='取色跳过';
-    if(!userData.traits.length)userData.traits=['圆润','鲜明','有记忆点'];
+    const c=document.createElement('canvas'); c.width=32; c.height=32;
+    const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,32,32);
+    const d=ctx.getImageData(0,0,32,32).data; let r=0,g=0,b=0,n=0;
+    for(let i=0;i<d.length;i+=16){r+=d[i];g+=d[i+1];b+=d[i+2];n++}
+    r=Math.round(r/n);g=Math.round(g/n);b=Math.round(b/n);
+    userData.avgColor=`rgb(${r},${g},${b})`;
+    $('#photo-color-label').textContent=`取色 rgb(${r},${g},${b})`;
+    const warmth = r>b ? '暖色调' : '冷色调';
+    userData.traits=['照片特征', warmth, (r+g+b)/3>145?'明亮':'沉稳'];
+    userData.style = r>b ? 'cute' : 'cool';
   };
   img.src=src;
 }
@@ -967,9 +956,9 @@ const POSTER_THEMES = [
   {id:'promo',label:'活动海报',defaultPrompt:'新品上市 · 限时特惠',emoji:'🎪'}
 ];
 const MOCKUP_TYPES = [
-  {id:'phonecase',label:'手机壳',icon:'📱'},
-  {id:'totebag',label:'帆布袋',icon:'🛍️'},
-  {id:'sticker',label:'贴纸',icon:'🏷️'}
+  {id:'phonecase',label:'手机壳',icon:'📱',drawFn:drawPhoneCaseAsset},
+  {id:'totebag',label:'帆布袋',icon:'🛍️',drawFn:drawToteBagAsset},
+  {id:'sticker',label:'贴纸',icon:'🏷️',drawFn:drawStickerAsset}
 ];
 
 /* ===== 加载动画工具 ===== */
@@ -1098,6 +1087,95 @@ function drawPhotoArt(canvas=$('#hero-canvas')){
   img.src=userData.photo;
 }
 
+/* ===== 照片资产卡片生成 ===== */
+function renderPhotoAssets(body){
+  if(!userData.photo) return;
+  const s=STYLE_PACKS[userData.style];
+  addPhotoAssetSection(body,'主立绘',true);
+  addPhotoAssetSection(body,'表情包',false,[
+    ['表情包套组','可爱','😊'],['酷表情','酷酷','😎'],['复古表情','怀旧','📺'],['手绘表情','涂鸦','✏️']
+  ]);
+  addPhotoAssetSection(body,'节日海报',false,[
+    ['节日海报','节日限定','🎊'],['活动海报','活动推广','🎪'],['主题海报','主题视觉','🎨']
+  ]);
+  addPhotoAssetSection(body,'周边 Mockup',false,[
+    ['周边组合','实物应用','📱'],['商品展示','商品呈现','🏷️'],['印刷物料','纸品周边','🖨️']
+  ]);
+  addPhotoAssetSection(body,'社交封面',false,[
+    ['社交封面','多平台封面','💬'],['平台视觉','平台延展','🌐'],['头像套组','头像系列','👤']
+  ]);
+}
+function addPhotoAssetSection(parent,title,large=false,subItems=[]){
+  const sec=document.createElement('section');sec.className='asset-section';sec.innerHTML=`<h2>${title}</h2>`;
+  const row=document.createElement('div');row.className='asset-row';
+  const c=document.createElement('canvas');c.width=large?820:480;c.height=large?1060:620;
+  const ctx=c.getContext('2d'), w=c.width, h=c.height, s=STYLE_PACKS[userData.style];
+  const img=new Image();img.crossOrigin='anonymous';
+  img.onload=()=>{
+    const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,'#FFFFFF');g.addColorStop(.48,s.bg);g.addColorStop(1,shade(s.primary,.72));ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+    drawDecor(ctx,s,w,h);
+    const cx=w/2,cy=h/2-10,size=Math.min(Math.min(w,h)*0.7,w-100),ratio=img.width/img.height;
+    const iw=ratio>1?size:size*ratio,ih=ratio>1?size/ratio:size;
+    ctx.save();ctx.beginPath();
+    if(CanvasRenderingContext2D.prototype.roundRect){ctx.roundRect(cx-iw/2,cy-ih/2,iw,ih,12)}else{roundedRect(ctx,cx-iw/2,cy-ih/2,iw,ih,12)}
+    ctx.clip();
+    ctx.filter='saturate(1.4) contrast(1.1) brightness(1.05)';
+    if(s.name==='复古风') ctx.filter='saturate(.85) contrast(1.15) sepia(.25)';
+    if(s.name==='潮酷风') ctx.filter='saturate(1.6) contrast(1.2) hue-rotate(-10deg)';
+    if(s.name==='手绘风') ctx.filter='saturate(1.1) contrast(1.05) brightness(1.08)';
+    ctx.drawImage(img,cx-iw/2,cy-ih/2,iw,ih);ctx.filter='none';ctx.restore();
+    ctx.strokeStyle=s.primary;ctx.lineWidth=4;ctx.beginPath();
+    if(CanvasRenderingContext2D.prototype.roundRect){ctx.roundRect(cx-iw/2-4,cy-ih/2-4,iw+8,ih+8,14)}else{roundedRect(ctx,cx-iw/2-4,cy-ih/2-4,iw+8,ih+8,14)}
+    ctx.stroke();
+    ctx.textAlign='center';ctx.fillStyle='#fff';ctx.strokeStyle='rgba(26,26,26,.8)';ctx.lineWidth=6;
+    ctx.font=`900 ${large?48:28}px "PingFang SC",sans-serif`;
+    ctx.strokeText(userData.nickname,w/2,h-40);ctx.fillText(userData.nickname,w/2,h-40);
+    ctx.font=`800 ${large?22:14}px "PingFang SC",sans-serif`;ctx.fillStyle='#1A1A1A';
+    ctx.fillText(`${s.name} · 专属 IP`,w/2,h-(large?18:10));
+  };
+  img.src=userData.photo;
+  const card=document.createElement('div');card.className='asset-card curated-asset'+(large?' large':'');
+  card.innerHTML=`<span class="asset-badge">${large?'核心形象':'IP 资产'}</span>`;
+  card.appendChild(c);
+  const cap=document.createElement('div');cap.className='asset-cap';cap.textContent=large?`主立绘 · ${s.name}`:`${title} · ${s.name}`;
+  const note=document.createElement('p');note.className='asset-note';note.textContent=large?'基于你的照片生成的核心 IP 形象，可应用于各种延展场景':'基于你的照片生成的风格化 IP 资产';
+  const btn=document.createElement('button');btn.className='download';btn.textContent='💾';
+  btn.onclick=()=>{const a=document.createElement('a');a.download=`ZOME_${userData.nickname}_${title}.png`;a.href=c.toDataURL('image/png');a.click();showToast('已开始下载')};
+  card.appendChild(cap);card.appendChild(note);card.appendChild(btn);
+  row.appendChild(card);userData.assets.push([title,c]);
+  if(!large && subItems.length){
+    subItems.forEach(([label,styleTag,emoji])=>{
+      const sc=document.createElement('canvas');sc.width=420;sc.height=520;
+      const sctx=sc.getContext('2d'),sw=420,sh=520;
+      const simg=new Image();simg.crossOrigin='anonymous';
+      simg.onload=()=>{
+        const sg=sctx.createLinearGradient(0,0,sw,sh);sg.addColorStop(0,'#FFFFFF');sg.addColorStop(.5,s.bg);sg.addColorStop(1,shade(s.primary,.7));sctx.fillStyle=sg;sctx.fillRect(0,0,sw,sh);
+        drawDecor(sctx,s,sw,sh);
+        const scx=sw/2,scy=sh/2-20,ssize=Math.min(sw-80,300),sratio=simg.width/simg.height;
+        const siw=sratio>1?ssize:ssize*sratio,sih=sratio>1?ssize/sratio:ssize;
+        sctx.save();sctx.beginPath();
+        if(CanvasRenderingContext2D.prototype.roundRect){sctx.roundRect(scx-siw/2,scy-sih/2,siw,sih,10)}else{roundedRect(sctx,scx-siw/2,scy-sih/2,siw,sih,10)}
+        sctx.clip();sctx.filter='saturate(1.4) contrast(1.1) brightness(1.05)';
+        if(s.name==='复古风') sctx.filter='saturate(.85) contrast(1.15) sepia(.25)';
+        if(s.name==='潮酷风') sctx.filter='saturate(1.6) contrast(1.2) hue-rotate(-10deg)';
+        if(s.name==='手绘风') sctx.filter='saturate(1.1) contrast(1.05) brightness(1.08)';
+        sctx.drawImage(simg,scx-siw/2,scy-sih/2,siw,sih);sctx.filter='none';sctx.restore();
+        sctx.textAlign='center';sctx.font='800 18px sans-serif';sctx.fillStyle='#1A1A1A';sctx.fillText(`${emoji} ${label}`,sw/2,sh-16);
+      };
+      simg.src=userData.photo;
+      const subCard=document.createElement('div');subCard.className='asset-card curated-asset';
+      subCard.appendChild(sc);
+      const subCap=document.createElement('div');subCap.className='asset-cap';subCap.textContent=label;
+      const subNote=document.createElement('p');subNote.className='asset-note';subNote.textContent=styleTag;
+      const subBtn=document.createElement('button');subBtn.className='download';subBtn.textContent='💾';
+      subBtn.onclick=()=>{const a=document.createElement('a');a.download=`ZOME_${userData.nickname}_${label}.png`;a.href=sc.toDataURL('image/png');a.click();showToast('已开始下载')};
+      subCard.appendChild(subCap);subCard.appendChild(subNote);subCard.appendChild(subBtn);
+      row.appendChild(subCard);userData.assets.push([label,sc]);
+    });
+  }
+  sec.appendChild(row);parent.appendChild(sec);
+}
+
 function roundedRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
 function jitter(ctx,amt=1){ if(userData.style==='handdrawn'){ctx.translate((Math.random()-.5)*amt,(Math.random()-.5)*amt)} }
 function drawHero(canvas=$('#hero-canvas')){ drawCharacterFull(canvas.getContext('2d'), userData.style, userData.type, userData.pose, userData.nickname, 820, 1060) }
@@ -1191,6 +1269,8 @@ function startGenerate(){
   const tick=()=>{if(i>=steps.length){setTimeout(()=>goToStage('stage-assets'),500);return} $('#gen-progress').style.width=steps[i][0]+'%';$('#gen-text').textContent=steps[i][1];i++;setTimeout(tick,520+Math.random()*180)};tick();
 }
 
+function makeAssetCanvas(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),c);return c}
+
 /* ===== 主立绘三视图 ===== */
 function renderTriviewSection(parent) {
   const sec = document.createElement('section');
@@ -1230,7 +1310,6 @@ function drawTriview() {
   }
 }
 async function regenerateTriview(index, cvs, cardEl) {
-  if(!hasApiConfig()){showToast('未连接生图 API，当前为示例图。配置 API 后即可实时生成');return}
   const ov = showRegenLoading(cardEl);
   await drawTriviewCanvas(cvs.getContext('2d'), index, cvs.width, cvs.height, true, cardEl);
   hideRegenLoading(ov);
@@ -1238,6 +1317,17 @@ async function regenerateTriview(index, cvs, cardEl) {
 function getAssetImageSrc(){
   if(userData.photoPreset==='pet') return PRESET_STYLE_IMAGES[userData.style]||PRESET_STYLE_IMAGES.cute;
   return CURATED_ASSETS.hero;
+}
+function getImageSpecs(type){
+  const specs={
+    triview:'1024×1024px · PNG · 透明底 · 300dpi',
+    emoji:'240×240px · PNG · 透明底 · 72dpi',
+    poster:'1080×1920px · JPG · 150dpi',
+    phonecase:'540×960px · PNG · 300dpi',
+    totebag:'800×1000px · PNG · 300dpi',
+    sticker:'500×500px · PNG · 300dpi'
+  };
+  return specs[type]||'PNG · 300dpi';
 }
 function drawImageCover(ctx, img, x, y, w, h) {
   const ir = img.width / img.height, cr = w / h;
@@ -1425,11 +1515,26 @@ function drawPosterCardCanvas(ctx, index, w, h, forceRegen, cardEl) {
     img.src = url;
   });
 }
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const chars = text.split('');
+  let line = '';
+  let ly = y;
+  for (const char of chars) {
+    const test = line + char;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line, x, ly);
+      line = char;
+      ly += lineHeight;
+    } else {
+      line = test;
+    }
+  }
+  ctx.fillText(line, x, ly);
+}
 async function regeneratePoster(index) {
   const card = $('#poster-grid')?.children[index];
   const cvs = card?.querySelector('canvas');
   if (!card || !cvs) return;
-  if(!hasApiConfig()){showToast('未连接生图 API，当前为示例图。配置 API 后即可实时生成');return}
   const ov = showRegenLoading(card);
   await drawPosterCardCanvas(cvs.getContext('2d'), index, cvs.width, cvs.height, true, card);
   hideRegenLoading(ov);
@@ -1491,7 +1596,6 @@ async function regenerateMockupCard(index) {
   const card = $('#mockup-grid')?.children[index];
   const cvs = card?.querySelector('canvas');
   if (!card || !cvs) return;
-  if(!hasApiConfig()){showToast('未连接生图 API，当前为示例图。配置 API 后即可实时生成');return}
   const ov = showRegenLoading(card);
   await drawMockupCardCanvas(cvs.getContext('2d'), index, cvs.width, cvs.height, true, card);
   hideRegenLoading(ov);
@@ -1509,22 +1613,66 @@ function renderAssets(){
   renderMockupSection(body);
   const actions=document.createElement('div');actions.className='bottom-actions';actions.innerHTML='<button class="btn" onclick="downloadAllAssets()">下载全部资产</button><button class="btn secondary" onclick="resetDemo()">重新造一个</button>';body.appendChild(actions);
 }
-function downloadCanvas(canvas,filename){
-  const safeName=filename.replace(/[\\/:*?"<>|]/g,'_');
-  try{
-    const a=document.createElement('a');a.download=safeName;a.href=canvas.toDataURL('image/png');a.click();showToast('已开始下载')
-  }catch(e){
-    // canvas 被跨域图片污染，toDataURL 不可用；尝试从缓存取原图 URL 直接打开
-    const cached=findCachedUrlForCanvas(canvas);
-    if(cached){const a=document.createElement('a');a.download=safeName;a.href=cached;a.target='_blank';a.rel='noopener';a.click();showToast('已打开高清原图')}
-    else showToast('该图受跨域限制，请右键另存或配置同源资源')
-  }
+function addCuratedSection(parent,title,items,large=false){
+  const sec=document.createElement('section');sec.className='asset-section';sec.innerHTML=`<h2>${title}</h2>`;
+  const row=document.createElement('div');row.className='asset-row';
+  items.forEach(([label,src,note,badge])=>{
+    const card=document.createElement('div');card.className='asset-card curated-asset'+(large?' large':'');
+    card.innerHTML=`<div class="asset-image-wrap"><img src="${src}" alt="${label}"><span class="asset-badge">${badge}</span></div><div class="asset-cap">${label}</div><p class="asset-note">${note}</p><button class="download" aria-label="下载${label}">💾</button>`;
+    card.querySelector('.download').onclick=()=>downloadAsset(src,`ZOME_${userData.nickname}_${label}.png`);
+    row.appendChild(card);userData.assets.push([label,src]);
+  });
+  sec.appendChild(row);parent.appendChild(sec);
 }
-function findCachedUrlForCanvas(canvas){
-  // 在缓存里找一张尺寸匹配的图作为兜底（不完美，但能覆盖多数远程图场景）
-  for(const k in _imgCache){const u=_imgCache[k];if(u&&u.startsWith&&(u.startsWith('http')||u.startsWith('data:')))return u}
-  return null
+function addSection(parent,title,items,large=false){
+  const sec=document.createElement('section');sec.className='asset-section';sec.innerHTML=`<h2>${title}</h2>`;
+  const row=document.createElement('div');row.className='asset-row';
+  items.forEach(([label,canvas])=>{const card=document.createElement('div');card.className='asset-card'+(large?' large':'');card.appendChild(canvas);const cap=document.createElement('div');cap.className='asset-cap';cap.textContent=label;const btn=document.createElement('button');btn.className='download';btn.textContent='💾';btn.onclick=()=>downloadCanvas(canvas,`ZOME_${userData.nickname}_${label}.png`);card.appendChild(cap);card.appendChild(btn);row.appendChild(card);userData.assets.push([label,canvas])});
+  sec.appendChild(row);parent.appendChild(sec);
 }
+function drawExpressionAsset(ctx,expr){
+  ctx.fillStyle=STYLE_PACKS[userData.style].bg;ctx.fillRect(0,0,420,420);drawDecor(ctx,STYLE_PACKS[userData.style],420,420);
+  ctx.save();ctx.translate(210,230);ctx.scale(1.35,1.35);drawHead(ctx,STYLE_PACKS[userData.style],userData.type,0);ctx.restore();
+  ctx.save();ctx.translate(210,230);ctx.scale(1.35,1.35);drawFace(ctx,STYLE_PACKS[userData.style],userData.type,0,expr);ctx.restore();
+}
+function drawPosterAsset(ctx,c,label){
+  const s=STYLE_PACKS[userData.style], g=ctx.createLinearGradient(0,0,c.width,c.height);g.addColorStop(0,label==='春节海报'?'#e63946':label==='七夕海报'?'#ff8cc8':'#a78bfa');g.addColorStop(1,s.secondary);ctx.fillStyle=g;ctx.fillRect(0,0,c.width,c.height);
+  drawDecor(ctx,s,c.width,c.height); const tmp=makeAssetCanvas(360,470,(t,cc)=>drawCharacterFull(t,userData.style,userData.type,userData.pose,userData.nickname,cc.width,cc.height));ctx.drawImage(tmp,80,120,360,470);
+  ctx.textAlign='center';ctx.font='900 44px sans-serif';ctx.lineWidth=8;ctx.strokeStyle='#1A1A1A';ctx.fillStyle='#fff';ctx.strokeText(label,c.width/2,82);ctx.fillText(label,c.width/2,82);
+}
+function drawPhoneCaseAsset(ctx,c){
+  ctx.fillStyle='#f7f2eb';ctx.fillRect(0,0,c.width,c.height);
+  const img=new Image();img.crossOrigin='anonymous';
+  img.onload=()=>{ctx.save();ctx.beginPath();ctx.roundRect(40,20,c.width-80,c.height-70,24);ctx.clip();ctx.drawImage(img,40,20,c.width-80,c.height-70);ctx.restore();};
+  const styleKey=userData.style||'cute';
+  const m=(ASSET_IMAGES[styleKey]||ASSET_IMAGES.cute).mockup;
+  img.src=ASSET_BASE+m.phonecase;
+  ctx.save();ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.roundRect(20,c.height-40,c.width-40,24,10);ctx.fill();ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font='600 11px var(--font-body)';ctx.textAlign='center';ctx.fillText(getImageSpecs('phonecase'),c.width/2,c.height-22);ctx.restore();
+}
+function drawToteBagAsset(ctx,c){
+  ctx.fillStyle='#f7f2eb';ctx.fillRect(0,0,c.width,c.height);
+  const img=new Image();img.crossOrigin='anonymous';
+  img.onload=()=>{ctx.save();ctx.beginPath();ctx.roundRect(40,20,c.width-80,c.height-70,24);ctx.clip();ctx.drawImage(img,40,20,c.width-80,c.height-70);ctx.restore();};
+  const styleKey=userData.style||'cute';
+  const m=(ASSET_IMAGES[styleKey]||ASSET_IMAGES.cute).mockup;
+  img.src=ASSET_BASE+m.totebag;
+  ctx.save();ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.roundRect(20,c.height-40,c.width-40,24,10);ctx.fill();ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font='600 11px var(--font-body)';ctx.textAlign='center';ctx.fillText(getImageSpecs('totebag'),c.width/2,c.height-22);ctx.restore();
+}
+function drawStickerAsset(ctx,c){
+  ctx.fillStyle='#f7f2eb';ctx.fillRect(0,0,c.width,c.height);
+  const img=new Image();img.crossOrigin='anonymous';
+  img.onload=()=>{ctx.save();ctx.beginPath();ctx.roundRect(40,20,c.width-80,c.height-70,24);ctx.clip();ctx.drawImage(img,40,20,c.width-80,c.height-70);ctx.restore();};
+  const styleKey=userData.style||'cute';
+  const m=(ASSET_IMAGES[styleKey]||ASSET_IMAGES.cute).mockup;
+  img.src=ASSET_BASE+m.sticker;
+  ctx.save();ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.roundRect(20,c.height-40,c.width-40,24,10);ctx.fill();ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font='600 11px var(--font-body)';ctx.textAlign='center';ctx.fillText(getImageSpecs('sticker'),c.width/2,c.height-22);ctx.restore();
+}
+function drawSocialAsset(ctx,c,platform){
+  const s=STYLE_PACKS[userData.style];ctx.fillStyle=s.bg;ctx.fillRect(0,0,c.width,c.height);drawDecor(ctx,s,c.width,c.height);const tmp=makeAssetCanvas(260,336,(t,cc)=>drawCharacterFull(t,userData.style,userData.type,userData.pose,userData.nickname,cc.width,cc.height));
+  if(platform==='redbook'){ctx.drawImage(tmp,32,52,210,272);ctx.textAlign='left';ctx.font='900 42px sans-serif';ctx.fillStyle='#1A1A1A';ctx.fillText(userData.nickname,275,180);ctx.font='800 22px sans-serif';ctx.fillText('我的专属 IP 形象',275,220)}
+  else {ctx.drawImage(tmp,c.width/2-130,platform==='douyin'?90:48,260,336);ctx.textAlign='center';ctx.font='900 36px sans-serif';ctx.fillStyle='#1A1A1A';ctx.fillText(platform==='douyin'?'#你造吗':'专属头像',c.width/2,c.height-42)}
+}
+function downloadCanvas(canvas,filename){const a=document.createElement('a');a.download=filename.replace(/[\\/:*?"<>|]/g,'_');a.href=canvas.toDataURL('image/png');a.click();showToast('已开始下载')}
 function downloadAsset(asset,filename){
   if(asset && typeof asset.toDataURL==='function') return downloadCanvas(asset,filename);
   const a=document.createElement('a');a.download=filename.replace(/[\\/:*?"<>|]/g,'_');a.href=asset;a.target='_blank';a.rel='noopener';a.click();showToast('已打开高清示例图');
@@ -1562,7 +1710,7 @@ function downloadAllAssets(){
     Array.from(mockupCards).forEach((card, i) => {
       const cvs = card.querySelector('canvas');
       const mt = MOCKUP_TYPES[i];
-      if (cvs && mt) setTimeout(() => downloadCanvas(cvs, `ZOME_${userData.nickname}_周边_${mt.label}.png`), 15 * 180 + i * 180);
+      if (cvs) setTimeout(() => downloadCanvas(cvs, `ZOME_${userData.nickname}_周边_${mt.label}.png`), 15 * 180 + i * 180);
     });
   }
 }
