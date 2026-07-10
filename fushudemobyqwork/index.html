@@ -877,14 +877,14 @@ async function openShareModal() {
 }
 
 async function uploadImage() {
-  // Compress: 600px JPEG at 0.82 quality → ~100-200KB (vs 1.5-3MB PNG), much faster upload
+  // Compress: 480px JPEG at 0.72 quality → ~50-80KB (WeChat stickers display small anyway)
   const compressedCanvas = document.createElement('canvas');
-  const uploadSize = 600;
+  const uploadSize = 480;
   compressedCanvas.width = uploadSize;
   compressedCanvas.height = uploadSize;
   const cctx = compressedCanvas.getContext('2d');
   cctx.drawImage(exportCanvas(), 0, 0, uploadSize, uploadSize);
-  const blob = await new Promise(r => compressedCanvas.toBlob(r, 'image/jpeg', 0.82));
+  const blob = await new Promise(r => compressedCanvas.toBlob(r, 'image/jpeg', 0.72));
 
   // Telegraph (confirmed CORS support: Access-Control-Allow-Origin: *)
   try {
