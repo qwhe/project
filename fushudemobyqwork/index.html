@@ -820,7 +820,7 @@ async function openShareModal() {
   titleEl.textContent = '正在上传表情包...';
   subEl.textContent = '请稍候';
   tipEl.innerHTML = '';
-  qrBox.innerHTML = '<div style="padding:30px;color:#888;font-size:14px">⏳ 上传中...</div>';
+  qrBox.innerHTML = '<div style="padding:30px;color:#888;font-size:14px">⏳ 压缩并上传中，请稍候...</div>';
   qrBox.style.display = 'inline-flex';
   saveMobileBtn.style.display = 'none';
   modal.classList.add('show');
@@ -877,14 +877,25 @@ async function openShareModal() {
 }
 
 async function uploadImage() {
-  const ec = exportCanvas();
-  const blob = await new Promise(r => ec.toBlob(r, 'image/png'));
+  // Compress: 600px JPEG at 0.82 quality → ~100-200KB (vs 1.5-3MB PNG), much faster upload
+  const compressedCanvas = document.createElement('canvas');
+  const uploadSize = 600;
+  compressedCanvas.width = uploadSize;
+  compressedCanvas.height = uploadSize;
+  const cctx = compressedCanvas.getContext('2d');
+  cctx.drawImage(exportCanvas(), 0, 0, uploadSize, uploadSize);
+  const blob = await new Promise(r => compressedCanvas.toBlob(r, 'image/jpeg', 0.82));
 
-  // Primary: Telegraph (CORS enabled, WeChat-friendly)
+  // Telegraph (confirmed CORS support: Access-Control-Allow-Origin: *)
   try {
     const fd = new FormData();
-    fd.append('file', blob, 'sticker.png');
-    const resp = await fetch('https://telegra.ph/upload', { method: 'POST', body: fd });
+    fd.append('file', blob, 'sticker.jpg');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const resp = await fetch('https://telegra.ph/upload', {
+      method: 'POST', body: fd, signal: controller.signal,
+    });
+    clearTimeout(timeout);
     if (resp.ok) {
       const data = await resp.json();
       if (data && data[0] && data[0].path) {
@@ -892,17 +903,6 @@ async function uploadImage() {
       }
     }
   } catch(e) { console.warn('Telegraph upload failed:', e); }
-
-  // Fallback: 0x0.st
-  try {
-    const fd = new FormData();
-    fd.append('file', blob, 'sticker.png');
-    const resp = await fetch('https://0x0.st', { method: 'POST', body: fd });
-    if (resp.ok) {
-      const url = (await resp.text()).trim();
-      if (url.startsWith('http')) return url;
-    }
-  } catch(e) { console.warn('0x0.st upload failed:', e); }
 
   return null;
 }
