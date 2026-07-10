@@ -807,49 +807,104 @@ function saveImage() {
   showToast('图片已保存！');
 }
 
-function openShareModal() {
+async function openShareModal() {
   const modal = document.getElementById('shareModal');
   const qrBox = document.getElementById('qrBox');
+  const titleEl = document.getElementById('modalTitle');
+  const subEl = document.getElementById('modalSub');
+  const tipEl = document.getElementById('modalTip');
+  const saveMobileBtn = document.getElementById('btnSaveMobile');
   const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  if (isMobile) {
-    // Mobile: show save button + instructions
-    document.getElementById('modalTitle').textContent = '分享到微信';
-    document.getElementById('modalSub').textContent = '保存图片后，在微信中作为表情发送';
-    document.getElementById('modalTip').innerHTML =
-      '1. 点击下方按钮保存图片<br>2. 打开微信，进入聊天<br>3. 点击表情面板 → "+" → 添加图片<br>4. 选择保存的图片作为表情';
-    document.getElementById('btnSaveMobile').style.display = 'flex';
-    qrBox.style.display = 'none';
-  } else {
-    // Desktop: show QR code
-    document.getElementById('modalTitle').textContent = '手机扫码分享';
-    document.getElementById('modalSub').textContent = '用微信扫码，保存表情包后发送给好友';
-    document.getElementById('modalTip').innerHTML =
-      '1. 打开手机微信扫一扫二维码<br>2. 长按页面中的图片保存<br>3. 在微信聊天中添加为表情';
-    document.getElementById('btnSaveMobile').style.display = 'none';
-    qrBox.style.display = 'inline-flex';
-    qrBox.innerHTML = '';
+  // Show loading state
+  titleEl.textContent = '正在上传表情包...';
+  subEl.textContent = '请稍候';
+  tipEl.innerHTML = '';
+  qrBox.innerHTML = '<div style="padding:30px;color:#888;font-size:14px">⏳ 上传中...</div>';
+  qrBox.style.display = 'inline-flex';
+  saveMobileBtn.style.display = 'none';
+  modal.classList.add('show');
 
-    // Try to generate QR code
-    const pageUrl = window.location.href;
-    if (typeof QRCode !== 'undefined') {
-      try {
-        new QRCode(qrBox, {
-          text: pageUrl,
-          width: 160,
-          height: 160,
-          colorDark: '#1a1a28',
-          colorLight: '#ffffff',
-        });
-      } catch(e) {
-        qrBox.innerHTML = '<p style="color:#888;font-size:13px;padding:20px">二维码生成失败</p>';
-      }
-    } else {
-      qrBox.innerHTML = '<p style="color:#888;font-size:13px;padding:20px">QR 库未加载，请保存图片后手动分享</p>';
-    }
+  // Upload the image
+  let imageUrl = null;
+  try {
+    imageUrl = await uploadImage();
+  } catch(e) {
+    console.error('Upload failed:', e);
   }
 
-  modal.classList.add('show');
+  if (!imageUrl) {
+    // Fallback: use page URL
+    titleEl.textContent = '手机扫码分享';
+    subEl.textContent = '用微信扫码打开页面，保存图片后发送给好友';
+    tipEl.innerHTML = '1. 打开手机微信扫一扫二维码<br>2. 在页面中保存图片<br>3. 在微信聊天中添加为表情';
+    qrBox.innerHTML = '';
+    if (typeof QRCode !== 'undefined') {
+      new QRCode(qrBox, { text: window.location.href, width: 160, height: 160, colorDark: '#1a1a28', colorLight: '#ffffff' });
+    }
+    return;
+  }
+
+  // Success: QR code points directly to the sticker image
+  if (isMobile) {
+    titleEl.textContent = '分享到微信';
+    subEl.textContent = '长按下方图片保存，然后在微信中发送';
+    tipEl.innerHTML =
+      '1. 长按上方图片保存到手机相册<br>2. 打开微信，进入聊天<br>3. 点击表情面板 → "+" → 添加图片<br>4. 选择保存的图片作为表情';
+    saveMobileBtn.style.display = 'flex';
+  } else {
+    titleEl.textContent = '手机扫码获取表情包';
+    subEl.textContent = '用微信扫码，长按图片即可保存';
+    tipEl.innerHTML =
+      '1. 打开手机微信扫一扫二维码<br>2. 直接看到表情包图片<br>3. 长按图片保存，发送给好友';
+    saveMobileBtn.style.display = 'none';
+  }
+
+  qrBox.innerHTML = '';
+  if (typeof QRCode !== 'undefined') {
+    try {
+      new QRCode(qrBox, {
+        text: imageUrl,
+        width: 160, height: 160,
+        colorDark: '#1a1a28', colorLight: '#ffffff',
+      });
+    } catch(e) {
+      qrBox.innerHTML = '<p style="color:#888;font-size:13px;padding:20px">二维码生成失败</p>';
+    }
+  } else {
+    qrBox.innerHTML = `<a href="${imageUrl}" target="_blank" style="color:var(--accent)">点击打开表情包图片</a>`;
+  }
+}
+
+async function uploadImage() {
+  const ec = exportCanvas();
+  const blob = await new Promise(r => ec.toBlob(r, 'image/png'));
+
+  // Primary: Telegraph (CORS enabled, WeChat-friendly)
+  try {
+    const fd = new FormData();
+    fd.append('file', blob, 'sticker.png');
+    const resp = await fetch('https://telegra.ph/upload', { method: 'POST', body: fd });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data[0] && data[0].path) {
+        return 'https://telegra.ph' + data[0].path;
+      }
+    }
+  } catch(e) { console.warn('Telegraph upload failed:', e); }
+
+  // Fallback: 0x0.st
+  try {
+    const fd = new FormData();
+    fd.append('file', blob, 'sticker.png');
+    const resp = await fetch('https://0x0.st', { method: 'POST', body: fd });
+    if (resp.ok) {
+      const url = (await resp.text()).trim();
+      if (url.startsWith('http')) return url;
+    }
+  } catch(e) { console.warn('0x0.st upload failed:', e); }
+
+  return null;
 }
 
 function closeShareModal() {
