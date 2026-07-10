@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>负鼠表情包生成器</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -283,7 +284,6 @@ let isDragging = false, isRotating = false, isScaling = false;
 let dragStartX = 0, dragStartY = 0, dragStartTX = 0, dragStartTY = 0;
 let pinchStartAngle = 0, pinchStartRotation = 0;
 let pinchStartDist = 0, pinchStartScale = 1;
-let activePreset = null;
 let hintTimer = null;
 
 /* ======================================================
@@ -305,6 +305,11 @@ function init() {
   bindActionButtons();
   bindModal();
   render();
+
+  // Re-render after web fonts load (so text metrics match the actual font)
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => render());
+  }
 
   // hide hint after 4s
   hintTimer = setTimeout(() => {
@@ -488,17 +493,9 @@ function isRotationHandle(mx, my) {
   const b = getTextBounds();
   const handleDist = b.hh + 24;
   const rad = S.rotation * Math.PI / 180;
-  // handle is "above" in local space → in screen space it's rotated
-  const hx = px + (-Math.sin(rad)) * handleDist * S.scale;
-  const hy = py + (-Math.cos(rad)) * handleDist * S.scale;
-  // Correction: "above" in local = negative Y in local, which after rotation:
-  // screenX = px + (0*cos(rad) - (-handleDist)*sin(rad)) * scale
-  //         = px + handleDist*sin(rad) * scale
-  // screenY = py + (0*sin(rad) + (-handleDist)*cos(rad)) * scale
-  //         = py - handleDist*cos(rad) * scale
-  const hx2 = px + handleDist * Math.sin(rad) * S.scale;
-  const hy2 = py - handleDist * Math.cos(rad) * S.scale;
-  const dist = Math.sqrt((mx - hx2)**2 + (my - hy2)**2);
+  const hx = px + handleDist * Math.sin(rad) * S.scale;
+  const hy = py - handleDist * Math.cos(rad) * S.scale;
+  const dist = Math.sqrt((mx - hx)**2 + (my - hy)**2);
   return dist < 20;
 }
 
@@ -531,6 +528,7 @@ function bindCanvasEvents() {
 
 function onMouseDown(e) {
   e.preventDefault();
+  hideHint();
   const p = screenToCanvas(e.clientX, e.clientY);
 
   if (isRotationHandle(p.x, p.y)) {
@@ -548,8 +546,8 @@ function onMouseMove(e) {
   const p = screenToCanvas(e.clientX, e.clientY);
 
   if (isDragging) {
-    S.textX = dragStartTX + (p.x - dragStartX) / CANVAS_SIZE;
-    S.textY = dragStartTY + (p.y - dragStartY) / CANVAS_SIZE;
+    S.textX = Math.max(0.05, Math.min(0.95, dragStartTX + (p.x - dragStartX) / CANVAS_SIZE));
+    S.textY = Math.max(0.05, Math.min(0.95, dragStartTY + (p.y - dragStartY) / CANVAS_SIZE));
     render();
   }
   if (isRotating) {
@@ -599,8 +597,8 @@ function onTouchMove(e) {
     const t = e.touches[0];
     const p = screenToCanvas(t.clientX, t.clientY);
     if (isDragging) {
-      S.textX = dragStartTX + (p.x - dragStartX) / CANVAS_SIZE;
-      S.textY = dragStartTY + (p.y - dragStartY) / CANVAS_SIZE;
+      S.textX = Math.max(0.05, Math.min(0.95, dragStartTX + (p.x - dragStartX) / CANVAS_SIZE));
+      S.textY = Math.max(0.05, Math.min(0.95, dragStartTY + (p.y - dragStartY) / CANVAS_SIZE));
       render();
     }
     if (isRotating) {
@@ -631,10 +629,12 @@ function onTouchEnd(e) {
     isDragging = false; isRotating = false; isScaling = false;
   } else if (e.touches.length === 1) {
     isScaling = false;
-    // re-check for drag
+    // re-check for rotation handle or drag
     const t = e.touches[0];
     const p = screenToCanvas(t.clientX, t.clientY);
-    if (hitTest(p.x, p.y)) {
+    if (isRotationHandle(p.x, p.y)) {
+      isRotating = true;
+    } else if (hitTest(p.x, p.y)) {
       isDragging = true;
       dragStartX = p.x; dragStartY = p.y;
       dragStartTX = S.textX; dragStartTY = S.textY;
@@ -921,11 +921,13 @@ function bindModal() {
 /* ======================================================
    UTILS
    ====================================================== */
+let toastTimer = null;
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
 function hideHint() {
@@ -939,19 +941,45 @@ function hideHint() {
    ====================================================== */
 document.addEventListener('DOMContentLoaded', init);
 
-// Also try WeChat JSAPI if available (best-effort)
+// WeChat browser: replace share button behavior entirely
 window.addEventListener('load', () => {
-  // Check if we're inside WeChat browser
   const inWeChat = /MicroMessenger/i.test(navigator.userAgent);
   if (inWeChat) {
-    document.getElementById('btnShare').textContent = '📲 发送给朋友';
-    document.getElementById('btnShare').addEventListener('click', () => {
-      // In WeChat browser: just save the image, user can long-press to send
-      saveImage();
-      showToast('长按保存的图片，可直接发送给好友');
-    }, { once: false });
+    const btn = document.getElementById('btnShare');
+    btn.textContent = '📲 发送给朋友';
+    // Clone to remove ALL previous event listeners, then bind new one
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.addEventListener('click', () => {
+      // Show fullscreen image overlay for long-press saving
+      showFullscreenImage();
+    });
   }
 });
+
+function showFullscreenImage() {
+  // Remove existing overlay if any
+  const old = document.getElementById('imgOverlay');
+  if (old) old.remove();
+
+  const ec = exportCanvas();
+  const dataUrl = ec.toDataURL('image/png');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'imgOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <img src="${dataUrl}" style="max-width:90%;max-height:70vh;border-radius:8px" />
+    <p style="color:#aaa;font-size:14px;margin-top:16px;text-align:center;line-height:1.6">
+      长按图片保存，然后在微信聊天中发送<br>
+      <span style="color:#666;font-size:12px">点击空白处关闭</span>
+    </p>
+  `;
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.body.appendChild(overlay);
+}
 </script>
 </body>
 </html>
